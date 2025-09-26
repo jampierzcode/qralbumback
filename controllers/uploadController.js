@@ -20,7 +20,7 @@ exports.uploadFile = async (req, res) => {
 
     // Hacer la solicitud POST a tu API PHP
     const response = await axios.post(
-      "https://apicursos.maicolbohorquez.com/index.php",
+      "https://apimultimedia.mcsolucionesti.com/index.php",
       form,
       {
         headers: {
@@ -57,5 +57,42 @@ exports.uploadFile = async (req, res) => {
   } catch (error) {
     console.error("Error al subir archivos:", error);
     res.status(500).json({ error: "Fallo al subir archivos a la API externa" });
+  }
+};
+
+exports.deleteFile = async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Buscar archivo en BD
+    const file = await Multimedia.findByPk(id);
+    if (!file) {
+      return res
+        .status(404)
+        .json({ error: "Archivo no encontrado en la base de datos" });
+    }
+
+    // Enviar DELETE al API PHP externo
+    const response = await axios.delete(
+      "https://apimultimedia.mcsolucionesti.com/index.php",
+      {
+        data: { urls: [file.url] }, // Se envía como body JSON
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+
+    if (!response.data.success) {
+      return res
+        .status(500)
+        .json({ error: "Error al eliminar en el servidor externo" });
+    }
+
+    // Eliminar de la base de datos
+    await file.destroy();
+
+    res.json({ success: true, deleted: file.url });
+  } catch (error) {
+    console.error("Error al eliminar archivo:", error);
+    res.status(500).json({ error: "Fallo al eliminar archivo" });
   }
 };
