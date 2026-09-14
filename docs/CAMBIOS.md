@@ -127,3 +127,16 @@ Verificación: `npm test` 41/41.
 - Tests de seguridad actualizados a los endpoints nuevos + `tests/dashboard.test.js`.
 
 Verificación: `npm test` 42/42.
+
+## Fase 6 — Portal privado del comprador (API)
+
+- **Links firmados** (`utils/portalToken.js`): `<id>.<firma HMAC>`. El admin puede volver a copiar el link cuando quiera; con sólo la base de datos no se pueden fabricar links. Secreto: `PORTAL_TOKEN_SECRET` (o derivado de `JWT_SECRET`).
+- **Admin**: `GET/POST /api/admin/gifts/:id/content-requests` (campos a pedir, vencimiento 1–60 días; un solo link activo por regalo; el regalo pasa a `collecting_content`) · `POST /api/admin/content-requests/:id/revoke`.
+- **Portal** (`/api/portal/:token`, sin sesión, rate limit, `no-store`, `noindex`):
+  - `GET` → nombre de la plantilla, `recipientName`/`senderName`, campos permitidos, sus valores y la media visible. **Nunca** cliente, notas, slug, id interno ni otros regalos.
+  - `PATCH /content` → valida con el schema **sólo sobre los campos permitidos** (422 si intenta otros).
+  - `POST /media` → sube como `customer` · `DELETE /media/:assetId` → borra lo suyo; lo del admin sólo se desvincula del campo.
+  - `POST /submit` → exige los obligatorios de sus campos; marca el link `submitted` y el regalo `ready`.
+  - Estados con mensajes humanos: inválido (404), desactivado, vencido o regalo ya no editable (410). `lastUsedAt` se actualiza en cada uso.
+
+Verificación: `npm test` 52/52 (tokens manipulados, privacidad, campos permitidos, permisos sobre archivos, envío incompleto/completo, vencido, revocado, regalo publicado).

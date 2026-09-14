@@ -5,6 +5,7 @@ const { createUploader, cleanupTempFiles } = require("../middleware/upload");
 const gifts = require("../services/gifts");
 const customers = require("../services/customers");
 const catalog = require("../services/catalog");
+const contentRequests = require("../services/contentRequests");
 
 router.use(auth, requireRole("superadmin", "admin"));
 
@@ -44,6 +45,13 @@ router.delete("/gifts/:id/media/:assetId", async (req, res) => {
   await gifts.removeMedia(req.params.id, req.params.assetId);
   res.status(204).end();
 });
+
+// ── Solicitar contenido al cliente (portal privado) ────────────────────────
+router.get("/gifts/:id/content-requests", async (req, res) => res.json({ items: await contentRequests.listRequests(req.params.id) }));
+router.post("/gifts/:id/content-requests", async (req, res) =>
+  res.status(201).json(await contentRequests.createRequest(req.params.id, req.body))
+);
+router.post("/content-requests/:id/revoke", async (req, res) => res.json(await contentRequests.revokeRequest(req.params.id)));
 
 // ── Plantillas (el código vive en el repo; aquí sólo lo comercial) ─────────
 router.get("/templates", async (req, res) => res.json({ items: await catalog.listTemplates() }));

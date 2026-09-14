@@ -11,4 +11,7 @@ const base = {
 const loginLimiter = rateLimit({ ...base, windowMs: 15 * 60 * 1000, limit: 10 });
 const eventsLimiter = rateLimit({ ...base, windowMs: 60 * 1000, limit: 30 });
 
-module.exports = { loginLimiter, eventsLimiter };
+const portalLimiter = rateLimit({ ...base, windowMs: 60 * 1000, limit: 120 });
+const portalUploadLimiter = rateLimit({ ...base, windowMs: 10 * 60 * 1000, limit: 80 });
+
+module.exports = { loginLimiter, eventsLimiter, portalLimiter, portalUploadLimiter };

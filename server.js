@@ -27,6 +27,7 @@ function createApp() {
   // /api/clients y /api/upload (modelo anterior) fueron retirados en la Fase 5.
   app.use("/api/admin", require("./routes/admin"));
   app.use("/api/public", require("./routes/public"));
+  app.use("/api/portal", require("./routes/portal"));
   // Eliminado: app.use("/uploads", express.static("uploads")) — exponía temporales.
 
   // Media procesada (variantes WebP, audio, video). Nombres inmutables → cache larga. Soporta Range.
