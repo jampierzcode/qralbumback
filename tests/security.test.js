@@ -56,12 +56,16 @@ test("GET /api/auth/me devuelve el admin sin contraseña", async () => {
 
 test("endpoints admin exigen token", async () => {
   for (const [method, url] of [
-    ["GET", "/api/clients"],
-    ["POST", "/api/clients"],
-    ["GET", "/api/clients/with/multimedia/all"],
-    ["DELETE", "/api/clients/1"],
-    ["POST", "/api/upload/abc"],
-    ["DELETE", "/api/upload/1"],
+    ["GET", "/api/admin/dashboard"],
+    ["GET", "/api/admin/customers"],
+    ["POST", "/api/admin/customers"],
+    ["GET", "/api/admin/gifts"],
+    ["POST", "/api/admin/gifts"],
+    ["PATCH", "/api/admin/gifts/abc"],
+    ["POST", "/api/admin/gifts/abc/media"],
+    ["DELETE", "/api/admin/gifts/abc/media/def"],
+    ["GET", "/api/admin/templates"],
+    ["GET", "/api/admin/collections"],
   ]) {
     const res = await api.request(method, url);
     assert.equal(res.status, 401, `${method} ${url} debería exigir sesión`);
@@ -72,55 +76,31 @@ test("un token con rol no administrativo recibe 403", async () => {
   const jwt = require("jsonwebtoken");
   const { jwtSecret } = require("../config/config");
   const clientToken = jwt.sign({ id: 999, role: "cliente" }, jwtSecret);
-  const res = await api.request("GET", "/api/clients", { token: clientToken });
+  const res = await api.request("GET", "/api/admin/gifts", { token: clientToken });
   assert.equal(res.status, 403);
 });
 
-test("crear cliente guarda la contraseña hasheada y no la devuelve", async () => {
-  const res = await api.request("POST", "/api/clients", {
-    token: adminToken,
-    body: { name: "Ana", email: "ana@test.local", password: "textoPlano123" },
-  });
-  assert.equal(res.status, 201);
-  assertNoPasswordDeep(res.body);
-
-  const [row] = await sequelize.query("SELECT password FROM Users WHERE email = 'ana@test.local'", {
-    type: QueryTypes.SELECT,
-  });
-  assert.notEqual(row.password, "textoPlano123");
-  assert.match(row.password, /^\$2[aby]\$/);
-
-  const list = await api.request("GET", "/api/clients", { token: adminToken });
-  assertNoPasswordDeep(list.body);
-  const withMedia = await api.request("GET", "/api/clients/with/multimedia/all", { token: adminToken });
-  assertNoPasswordDeep(withMedia.body);
-});
-
-test("la ruta pública que exponía datos del cliente fue eliminada", async () => {
-  const list = await api.request("GET", "/api/clients", { token: adminToken });
-  const { uuid } = list.body[0];
-  const res = await api.request("GET", `/api/clients/${uuid}`);
-  assert.equal(res.status, 404);
-  const files = await api.request("GET", `/api/clients/${uuid}/files?type=photo`);
-  assert.equal(files.status, 200);
-  assert.deepEqual(files.body, []);
+test("los endpoints del modelo anterior fueron retirados", async () => {
+  for (const url of ["/api/clients", "/api/clients/x/files", "/api/upload/x"]) {
+    const res = await api.request("GET", url, { token: adminToken });
+    assert.equal(res.status, 404, url);
+  }
 });
 
 test("subida rechaza tipos no permitidos y no deja temporales", async () => {
   const tmpDir = path.join(os.tmpdir(), "qralbum-uploads");
   const before = fs.existsSync(tmpDir) ? fs.readdirSync(tmpDir).length : 0;
 
-  const list = await api.request("GET", "/api/clients", { token: adminToken });
+  const gift = await api.request("POST", "/api/admin/gifts", { token: adminToken, body: { templateId: "love-letter" } });
   const form = new FormData();
-  form.append("type", "photo");
-  form.append("files", new Blob(["#!/bin/sh"], { type: "application/x-sh" }), "malo.sh");
-  const res = await api.request("POST", `/api/upload/${list.body[0].uuid}`, { token: adminToken, form });
+  form.append("file", new Blob(["#!/bin/sh"], { type: "application/x-sh" }), "malo.sh");
+  const res = await api.request("POST", `/api/admin/gifts/${gift.body.id}/media`, { token: adminToken, form });
   assert.equal(res.status, 415);
 
   const form2 = new FormData();
-  form2.append("type", "audio");
-  form2.append("files", new Blob(["fake"], { type: "image/png" }), "foto.png");
-  const res2 = await api.request("POST", `/api/upload/${list.body[0].uuid}`, { token: adminToken, form: form2 });
+  form2.append("kind", "image");
+  form2.append("file", new Blob(["no es imagen"], { type: "image/png" }), "foto.png");
+  const res2 = await api.request("POST", `/api/admin/gifts/${gift.body.id}/media`, { token: adminToken, form: form2 });
   assert.equal(res2.status, 415);
 
   const afterCount = fs.existsSync(tmpDir) ? fs.readdirSync(tmpDir).length : 0;

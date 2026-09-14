@@ -11,6 +11,8 @@ router.use(auth, requireRole("superadmin", "admin"));
 // Un archivo por petición: permite progreso individual y reintentos en el cliente.
 const uploadOne = createUploader({ maxFileSizeMB: 150, maxFiles: 1 }).single("file");
 
+router.get("/dashboard", async (req, res) => res.json(await gifts.dashboard()));
+
 // ── Clientes ────────────────────────────────────────────────────────────────
 router.get("/customers", async (req, res) => res.json({ items: await customers.listCustomers(req.query) }));
 router.post("/customers", async (req, res) => res.status(201).json(await customers.createCustomer(req.body)));

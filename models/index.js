@@ -40,6 +40,9 @@ TemplateListing.belongsToMany(Collection, {
   as: "collections",
 });
 
+CollectionTemplate.belongsTo(TemplateListing, { foreignKey: "templateListingId", as: "listing" });
+CollectionTemplate.belongsTo(Collection, { foreignKey: "collectionId", as: "collection" });
+
 module.exports = {
   Collection,
   TemplateListing,

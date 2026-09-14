@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { Op, fn, col } = require("sequelize");
-const { Gift, Customer, MediaAsset, GiftEvent, sequelize } = require("../models");
+const { Gift, Customer, MediaAsset, GiftEvent, CollectionTemplate, TemplateListing, sequelize } = require("../models");
 const { GIFT_STATUSES } = require("../models/Gift");
 const { HttpError } = require("../middleware/errorHandler");
 const { randomSlug } = require("../utils/slug");
@@ -81,6 +81,15 @@ async function listGifts(query = {}) {
   }
   if (query.templateId) where.templateId = String(query.templateId);
   if (query.templateIds) where.templateId = { [Op.in]: [].concat(query.templateIds) };
+  if (query.collectionId) {
+    const rows = await CollectionTemplate.findAll({
+      where: { collectionId: optionalInt(query.collectionId, { field: "collectionId" }) },
+      include: [{ model: TemplateListing, as: "listing", attributes: ["templateId"] }],
+    });
+    const ids = rows.map((r) => r.listing?.templateId).filter(Boolean);
+    const scoped = query.templateId ? ids.filter((t) => t === String(query.templateId)) : ids;
+    where.templateId = { [Op.in]: scoped.length ? scoped : ["__ninguna__"] };
+  }
   if (query.customerId) where.customerId = optionalInt(query.customerId, { field: "customerId" });
   if (query.from || query.to) {
     where.updatedAt = {};
@@ -245,6 +254,37 @@ async function removeMedia(giftId, assetId) {
   await gift.update({ content: contentValidation.stripAssetRefs(gift.content || {}, assetId) });
 }
 
+async function dashboard() {
+  const counts = await Gift.findAll({
+    attributes: ["status", [fn("COUNT", col("id")), "count"]],
+    group: ["status"],
+    raw: true,
+  });
+  const byStatus = Object.fromEntries(counts.map((r) => [r.status, Number(r.count)]));
+  const total = Object.entries(byStatus).reduce((sum, [status, n]) => (status === "archived" ? sum : sum + n), 0);
+  const opens = await GiftEvent.count({ where: { type: "opened" } });
+  const recent = await Gift.findAll({
+    where: { status: { [Op.ne]: "archived" } },
+    include: [{ model: Customer, as: "customer", attributes: ["id", "name", "phone"] }],
+    order: [["updatedAt", "DESC"]],
+    limit: 6,
+  });
+  const usage = (await templateUsage()).sort((a, b) => b.count - a.count).slice(0, 5);
+  return {
+    stats: {
+      total,
+      draft: byStatus.draft || 0,
+      collectingContent: byStatus.collecting_content || 0,
+      ready: byStatus.ready || 0,
+      published: byStatus.published || 0,
+      archived: byStatus.archived || 0,
+      opens,
+    },
+    recentGifts: recent.map((g) => serializeGift(g)),
+    topTemplates: usage,
+  };
+}
+
 async function templateUsage() {
   const rows = await Gift.findAll({
     attributes: ["templateId", [fn("COUNT", col("id")), "count"]],
@@ -265,6 +305,7 @@ module.exports = {
   addMedia,
   removeMedia,
   templateUsage,
+  dashboard,
   serializeGift,
   findGiftOr404,
   remapAssetIds,

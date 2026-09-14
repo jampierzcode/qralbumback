@@ -118,3 +118,12 @@ Verificación: `npm test` 34/34 (incluye que la respuesta pública no filtre dat
 - `db/migrator.js`: `logger: undefined` ahora silencia los logs.
 
 Verificación: `npm test` 41/41.
+
+## Fase 5 — API para el nuevo admin
+
+- `GET /api/admin/dashboard`: conteos por estado, aperturas, 6 regalos recientes y plantillas más usadas.
+- `GET /api/admin/gifts?collectionId=`: filtra por las plantillas de una colección.
+- **Retirados** `/api/clients` y `/api/upload` (modelo anterior) junto con sus controladores y las dependencias `axios`, `form-data` y `uuid`. Las tablas `Users`/`Multimedia` se conservan.
+- Tests de seguridad actualizados a los endpoints nuevos + `tests/dashboard.test.js`.
+
+Verificación: `npm test` 42/42.

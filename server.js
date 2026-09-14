@@ -24,8 +24,7 @@ function createApp() {
 
   app.get("/api/health", (req, res) => res.json({ ok: true }));
   app.use("/api/auth", require("./routes/auth"));
-  app.use("/api/clients", require("./routes/clients"));
-  app.use("/api/upload", require("./routes/upload"));
+  // /api/clients y /api/upload (modelo anterior) fueron retirados en la Fase 5.
   app.use("/api/admin", require("./routes/admin"));
   app.use("/api/public", require("./routes/public"));
   // Eliminado: app.use("/uploads", express.static("uploads")) — exponía temporales.

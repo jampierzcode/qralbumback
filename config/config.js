@@ -35,7 +35,4 @@ module.exports = {
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
   },
-  legacyMediaApiUrl:
-    process.env.LEGACY_MEDIA_API_URL ||
-    "https://apimultimedia.mcsolucionesti.com/index.php",
 };
