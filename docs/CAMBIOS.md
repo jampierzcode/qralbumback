@@ -75,3 +75,22 @@ Plan completo: `../IMPLEMENTATION_PLAN.md`
 ### Verificación
 - `npm test`: 22/22 (incluye EXIF eliminado, archivos falsos, HEIC, Range, duplicado con remapeo de media, migración legada idempotente).
 - Migraciones aplicadas sobre la base de desarrollo.
+
+## Fase 2 — Colecciones
+
+### Qué cambió
+- Migración `20260914000008`: tablas `TemplateListings` (registro comercial de una plantilla: nombre/descr. opcionales que sobrescriben el manifest, `isActive`, `sortOrder`), `Collections` (`slug`, nombre, descripción, portada, `isActive`, `sortOrder`) y `CollectionTemplates` (N:M con orden propio por colección).
+- `services/templateRegistry.js`: el backend **lee los manifests y schemas de las plantillas del frontend** (`../qralbumfront/src/templates/<id>/manifest.js`, configurable con `TEMPLATES_ROOT`). Ignora carpetas que empiezan con `_` o `.`. Exige que `manifest.id` coincida con el nombre de la carpeta.
+- `services/catalog.js`:
+  - **Sincronización automática** al arrancar el servidor: cada plantilla nueva en el repo crea su listing y se agrega a sus colecciones sugeridas (`manifest.defaultCollections`). Nunca pisa ediciones del admin.
+  - CRUD de colecciones, activar/desactivar, reordenar, asignar/ordenar plantillas, portada (procesada a WebP 1600×1200 con recorte inteligente).
+  - Plantillas: listado con disponibilidad del código, colecciones y cantidad de regalos; editar nombre/descr./activo; reordenar.
+- Crear un regalo ahora exige que la plantilla exista en el registro y toma `templateVersion` del manifest.
+- `npm run db:seed`: crea las colecciones iniciales **Amor, Flores, Cumpleaños, Aniversario, Amistad** (idempotente por slug) y asigna plantillas.
+
+### API nueva (`/api/admin`)
+`GET /templates` · `PUT /templates/order` · `PATCH /templates/:templateId` · `GET/POST /collections` · `PUT /collections/order` · `PATCH /collections/:id` · `PUT /collections/:id/templates` · `POST /collections/:id/cover`
+
+### Verificación
+- `npm test`: 29/29 (plantillas de prueba en `tests/fixtures/templates`).
+- Migración y seed aplicados en desarrollo. Mientras no exista `qralbumfront/src/templates` (Fase 3) el servidor avisa y el catálogo queda vacío, sin bloquear el arranque.

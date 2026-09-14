@@ -9,7 +9,8 @@
     "db:migrate:status": "node scripts/migrate.js status",
     "db:migrate:down": "node scripts/migrate.js down",
     "admin:create": "node scripts/admin-create.js",
-    "test": "NODE_ENV=test DB_NAME=${TEST_DB_NAME:-qralbum_test} node --test --test-concurrency=1 \"tests/**/*.test.js\""
+    "test": "NODE_ENV=test DB_NAME=${TEST_DB_NAME:-qralbum_test} node --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "db:seed": "node scripts/seed.js"
   },
   "keywords": [],
   "author": "",

@@ -4,6 +4,7 @@ const requireRole = require("../middleware/role");
 const { createUploader, cleanupTempFiles } = require("../middleware/upload");
 const gifts = require("../services/gifts");
 const customers = require("../services/customers");
+const catalog = require("../services/catalog");
 
 router.use(auth, requireRole("superadmin", "admin"));
 
@@ -40,6 +41,35 @@ router.post("/gifts/:id/media", uploadOne, async (req, res) => {
 router.delete("/gifts/:id/media/:assetId", async (req, res) => {
   await gifts.removeMedia(req.params.id, req.params.assetId);
   res.status(204).end();
+});
+
+// ── Plantillas (el código vive en el repo; aquí sólo lo comercial) ─────────
+router.get("/templates", async (req, res) => res.json({ items: await catalog.listTemplates() }));
+router.put("/templates/order", async (req, res) =>
+  res.json({ items: await catalog.reorderTemplates(req.body?.templateIds) })
+);
+router.patch("/templates/:templateId", async (req, res) =>
+  res.json(await catalog.updateTemplate(req.params.templateId, req.body))
+);
+
+// ── Colecciones ─────────────────────────────────────────────────────────────
+const uploadCover = createUploader({ maxFileSizeMB: 25, maxFiles: 1, allowedKinds: ["image"] }).single("file");
+
+router.get("/collections", async (req, res) => res.json({ items: await catalog.listCollections() }));
+router.post("/collections", async (req, res) => res.status(201).json(await catalog.createCollection(req.body)));
+router.put("/collections/order", async (req, res) =>
+  res.json({ items: await catalog.reorderCollections(req.body?.ids) })
+);
+router.patch("/collections/:id", async (req, res) => res.json(await catalog.updateCollection(req.params.id, req.body)));
+router.put("/collections/:id/templates", async (req, res) =>
+  res.json(await catalog.setCollectionTemplates(req.params.id, req.body?.templateIds))
+);
+router.post("/collections/:id/cover", uploadCover, async (req, res) => {
+  try {
+    res.json(await catalog.setCollectionCover(req.params.id, req.file));
+  } finally {
+    await cleanupTempFiles(req);
+  }
 });
 
 module.exports = router;

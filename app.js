@@ -2,6 +2,7 @@ const config = require("./config/config");
 const sequelize = require("./config/db");
 const { buildMigrator } = require("./db/migrator");
 const { createApp } = require("./server");
+const { syncTemplateListings } = require("./services/catalog");
 
 async function start() {
   try {
@@ -18,6 +19,15 @@ async function start() {
       `❌ Hay ${pending.length} migración(es) pendiente(s): ${pending.map((m) => m.name).join(", ")}\n` +
         "   Ejecuta: npm run db:migrate"
     );
+    process.exit(1);
+  }
+
+  // Registra en el catálogo las plantillas nuevas encontradas en el repositorio.
+  try {
+    const created = await syncTemplateListings();
+    if (created.length) console.log(`🧩 Plantillas nuevas en el catálogo: ${created.join(", ")}`);
+  } catch (err) {
+    console.error("❌ No se pudieron cargar las plantillas:", err.message);
     process.exit(1);
   }
 

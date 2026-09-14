@@ -6,6 +6,7 @@ const { HttpError } = require("../middleware/errorHandler");
 const { randomSlug } = require("../utils/slug");
 const { optionalString, optionalInt, plainObject } = require("../utils/input");
 const media = require("./media");
+const registry = require("./templateRegistry");
 
 const TEMPLATE_ID = /^[a-z0-9][a-z0-9-]{1,62}$/;
 
@@ -135,7 +136,8 @@ function readBasics(body) {
 
 async function createGift(body = {}) {
   const templateId = typeof body.templateId === "string" ? body.templateId : "";
-  if (!TEMPLATE_ID.test(templateId)) throw new HttpError(400, "Selecciona una plantilla válida.");
+  const template = TEMPLATE_ID.test(templateId) ? await registry.getTemplate(templateId) : null;
+  if (!template) throw new HttpError(400, "Selecciona una plantilla válida.");
 
   const basics = readBasics(body);
   await assertCustomerExists(basics.customerId);
@@ -146,7 +148,7 @@ async function createGift(body = {}) {
         id: crypto.randomUUID(),
         slug: await uniqueSlug(transaction),
         templateId,
-        templateVersion: Number(body.templateVersion) || 1,
+        templateVersion: template.manifest.version || 1,
         status: "draft",
         recipientName: "",
         senderName: "",
