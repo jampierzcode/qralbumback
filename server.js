@@ -27,6 +27,7 @@ function createApp() {
   app.use("/api/clients", require("./routes/clients"));
   app.use("/api/upload", require("./routes/upload"));
   app.use("/api/admin", require("./routes/admin"));
+  app.use("/api/public", require("./routes/public"));
   // Eliminado: app.use("/uploads", express.static("uploads")) — exponía temporales.
 
   // Media procesada (variantes WebP, audio, video). Nombres inmutables → cache larga. Soporta Range.

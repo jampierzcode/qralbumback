@@ -94,3 +94,13 @@ Plan completo: `../IMPLEMENTATION_PLAN.md`
 ### Verificación
 - `npm test`: 29/29 (plantillas de prueba en `tests/fixtures/templates`).
 - Migración y seed aplicados en desarrollo. Mientras no exista `qralbumfront/src/templates` (Fase 3) el servidor avisa y el catálogo queda vacío, sin bloquear el arranque.
+
+## Fase 3 — API pública del motor
+
+- `GET /api/public/gifts/:slug`: sólo regalos **publicados**. Devuelve `gift` (slug, plantilla, versión, nombres, ocasión, content, settings) y `media` **sólo con los archivos referenciados** por el contenido (según el schema de la plantilla, vía `gift-core`). Nunca incluye cliente, notas, estado interno, id interno ni nombres originales de archivos.
+- `POST /api/public/gifts/:slug/events` (`opened`, `completed`, `music_started`), rate limit 30/min por IP.
+- `GET /api/public/legacy/:uuid` → `{ slug }` para los links y QR antiguos.
+- `services/giftCore.js` carga `../qralbumfront/gift-core` (configurable con `GIFT_CORE_PATH`).
+- Fixture `yellow-flowers` de pruebas con schema real de `gift-core`.
+
+Verificación: `npm test` 34/34 (incluye que la respuesta pública no filtre datos privados ni media no usada, y que archivar retire el regalo).
