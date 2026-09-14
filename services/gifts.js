@@ -7,6 +7,7 @@ const { randomSlug } = require("../utils/slug");
 const { optionalString, optionalInt, plainObject } = require("../utils/input");
 const media = require("./media");
 const registry = require("./templateRegistry");
+const contentValidation = require("./contentValidation");
 
 const TEMPLATE_ID = /^[a-z0-9][a-z0-9-]{1,62}$/;
 
@@ -166,6 +167,16 @@ async function updateGift(id, body = {}) {
   const gift = await findGiftOr404(id);
   const basics = readBasics(body);
   await assertCustomerExists(basics.customerId);
+
+  if (basics.content !== undefined) {
+    const { content, bound } = await contentValidation.applyContentUpdate(gift, basics.content);
+    basics.content = content;
+    // Los nombres enviados fuera de content tienen prioridad.
+    for (const [key, value] of Object.entries(bound)) {
+      if (basics[key] === undefined) basics[key] = String(value || "").trim().slice(0, 120);
+    }
+  }
+
   await gift.update(basics);
   return getGift(gift.id);
 }
@@ -173,6 +184,7 @@ async function updateGift(id, body = {}) {
 async function setStatus(id, status) {
   if (!GIFT_STATUSES.includes(status)) throw new HttpError(400, "Estado inválido.");
   const gift = await findGiftOr404(id);
+  if (status === "published") await contentValidation.assertComplete(gift);
   const changes = { status };
   if (status === "published" && !gift.publishedAt) changes.publishedAt = new Date();
   if (status === "archived") changes.archivedAt = new Date();
@@ -228,7 +240,9 @@ async function addMedia(id, { file, uploadedBy = "admin", expectedKind, duration
 async function removeMedia(giftId, assetId) {
   const asset = await MediaAsset.findOne({ where: { id: assetId, giftId } });
   if (!asset) throw new HttpError(404, "Archivo no encontrado.");
+  const gift = await findGiftOr404(giftId);
   await media.deleteAsset(asset);
+  await gift.update({ content: contentValidation.stripAssetRefs(gift.content || {}, assetId) });
 }
 
 async function templateUsage() {

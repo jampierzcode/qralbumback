@@ -5,7 +5,9 @@ const sequelize = require("../config/db");
 
 const MIGRATIONS_DIR = path.join(__dirname, "..", "migrations");
 
-function buildMigrator({ logger = console } = {}) {
+function buildMigrator(options = {}) {
+  // `logger: undefined` desactiva los logs (no usar el valor por defecto).
+  const logger = "logger" in options ? options.logger : console;
   const files = fs
     .readdirSync(MIGRATIONS_DIR)
     .filter((f) => f.endsWith(".js"))

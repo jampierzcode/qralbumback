@@ -104,3 +104,17 @@ Plan completo: `../IMPLEMENTATION_PLAN.md`
 - Fixture `yellow-flowers` de pruebas con schema real de `gift-core`.
 
 Verificación: `npm test` 34/34 (incluye que la respuesta pública no filtre datos privados ni media no usada, y que archivar retire el regalo).
+
+## Fase 4 — Validación con el schema de la plantilla
+
+- `services/contentValidation.js`:
+  - **Guardar** (`PATCH /api/admin/gifts/:id` con `content`): valida en modo borrador con el `schema.js` real de la plantilla y `gift-core`; respuesta `422` con `details.errors: [{ path, message }]`.
+  - `recipientName` / `senderName` dentro de `content` se guardan en las columnas del Gift.
+  - **Fusión**: sólo se reemplazan las claves enviadas; se descartan claves desconocidas y se conservan las de versiones anteriores de la plantilla.
+  - Las referencias `{ assetId }` deben pertenecer al **mismo regalo** y ser del **tipo correcto**.
+  - **Publicar** exige contenido completo (obligatorios y mínimos) → `422 "Faltan datos para publicar el regalo."` con la lista de campos.
+  - **Borrar un archivo** quita sus referencias del contenido.
+- `tests/realTemplates.test.js`: carga las plantillas **reales** de `qralbumfront` y valida sus schemas en el servidor.
+- `db/migrator.js`: `logger: undefined` ahora silencia los logs.
+
+Verificación: `npm test` 41/41.
