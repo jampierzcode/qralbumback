@@ -4,13 +4,37 @@ const helmet = require("helmet");
 const { corsOrigins } = require("./config/config");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
 const storage = require("./services/storage");
+const { mountWeb } = require("./services/web");
 
-function createApp() {
+function createApp({ serveWeb = true } = {}) {
   const app = express();
 
   app.disable("x-powered-by");
   app.set("trust proxy", 1);
-  app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: "cross-origin" },
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'"],
+          // Ant Design (admin) inyecta estilos en tiempo de ejecución.
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          // Media legada vive en un dominio externo (https) y los previews usan blob:.
+          imgSrc: ["'self'", "data:", "blob:", "https:"],
+          mediaSrc: ["'self'", "blob:", "https:"],
+          fontSrc: ["'self'", "data:"],
+          connectSrc: ["'self'"],
+          frameSrc: ["'self'"],
+          frameAncestors: ["'self'"],
+          objectSrc: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+          upgradeInsecureRequests: process.env.FORCE_HTTPS === "true" ? [] : null,
+        },
+      },
+    })
+  );
   app.use(
     cors({
       origin: (origin, cb) => {
@@ -43,6 +67,10 @@ function createApp() {
   );
 
   app.use("/api", notFound);
+
+  // Producción: el mismo servidor entrega el frontend compilado con metadatos por regalo.
+  if (serveWeb) mountWeb(app);
+
   app.use(errorHandler);
   return app;
 }

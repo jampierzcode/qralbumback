@@ -109,7 +109,9 @@ test("subida rechaza tipos no permitidos y no deja temporales", async () => {
 
 test("/uploads ya no se sirve estáticamente", async () => {
   const res = await api.request("GET", "/uploads/4f27d2a5a3d9d46d01c212e604a7e6b0");
-  assert.notEqual(res.status, 200);
+  // Nunca entrega el archivo (si hay frontend compilado, responde la SPA en HTML).
+  assert.ok(res.status !== 200 || /text\/html/.test(res.headers.get("content-type")));
+  assert.ok(!/audio|octet-stream/.test(res.headers.get("content-type") || ""));
 });
 
 test("errores de JSON inválido responden 400 sin detalles internos", async () => {

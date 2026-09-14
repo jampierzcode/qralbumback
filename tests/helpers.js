@@ -5,6 +5,8 @@ const path = require("node:path");
 process.env.STORAGE_DIR ||= path.join(os.tmpdir(), `qralbum-test-storage-${process.pid}`);
 // Plantillas de prueba deterministas (las reales viven en qralbumfront).
 process.env.TEMPLATES_ROOT ||= path.join(__dirname, "fixtures", "templates");
+// Sólo se sirve un frontend compilado cuando el test lo pide (WEB_DIST_DIR).
+process.env.SERVE_WEB ||= process.env.WEB_DIST_DIR ? "true" : "false";
 const assert = require("node:assert/strict");
 const bcrypt = require("bcryptjs");
 const sequelize = require("../config/db");

@@ -140,3 +140,14 @@ Verificación: `npm test` 42/42.
   - Estados con mensajes humanos: inválido (404), desactivado, vencido o regalo ya no editable (410). `lastUsedAt` se actualiza en cada uso.
 
 Verificación: `npm test` 52/52 (tokens manipulados, privacidad, campos permitidos, permisos sobre archivos, envío incompleto/completo, vencido, revocado, regalo publicado).
+
+## Fase 8 — Frontend servido por el API con metadatos por regalo
+
+- `services/web.js`: si existe `../qralbumfront/dist` (o `WEB_DIST_DIR`) el mismo servidor entrega el frontend compilado:
+  - `/g/:slug` inyecta `<title>`, `description`, **Open Graph** y Twitter card (título "Un regalo para Andrea 💛", remitente en la descripción, **primera foto** como `og:image`), todo escapado. Regalos inexistentes → 404 con la SPA. `noindex` en regalos, portal y admin.
+  - `/assets` con cache inmutable; resto de rutas → SPA. `/api` y `/media` no se ven afectados.
+  - `PUBLIC_URL` define el dominio absoluto de `og:image` / `og:url`. `SERVE_WEB=false` desactiva.
+- **CSP** explícita con helmet, compatible con el visor (media legada https, blobs de preview, iframe del mismo origen, estilos de Ant Design). `upgrade-insecure-requests` sólo con `FORCE_HTTPS=true`.
+- `tests/web.test.js` (OG, escape de HTML, 404, SPA, assets, CSP). Los tests sólo sirven frontend cuando lo piden.
+
+Verificación: `npm test` 56/56 · navegación real en `http://localhost:3001` sin violaciones de CSP.
