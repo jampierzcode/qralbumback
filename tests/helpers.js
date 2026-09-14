@@ -1,4 +1,8 @@
 // Utilidades de pruebas de integración contra una base MySQL de pruebas.
+const os = require("node:os");
+const path = require("node:path");
+// Media de pruebas en un directorio temporal (antes de cargar storage).
+process.env.STORAGE_DIR ||= path.join(os.tmpdir(), `qralbum-test-storage-${process.pid}`);
 const assert = require("node:assert/strict");
 const bcrypt = require("bcryptjs");
 const sequelize = require("../config/db");

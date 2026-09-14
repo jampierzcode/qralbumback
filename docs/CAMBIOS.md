@@ -40,3 +40,38 @@ Plan completo: `../IMPLEMENTATION_PLAN.md`
 ### Verificación
 - `npm test`: 11/11 pruebas de seguridad pasan.
 - Migraciones aplicadas sobre la base de desarrollo existente (creada con `sync()`) sin pérdida.
+
+## Fase 1 — Nuevo modelo de negocio
+
+### Qué cambió
+- **Separación de entidades.** Un cliente ya no es un regalo:
+  - `Users` → sólo cuentas **admin** (rol `cliente` queda como legado de sólo lectura).
+  - `Customers` → quien compra (nombre, WhatsApp, email opcional, notas). **Sin contraseña.**
+  - `Gifts` → el regalo: `slug` corto, `customerId` opcional, `templateId`, `templateVersion`, `status` (`draft`, `collecting_content`, `ready`, `published`, `archived`), `recipientName`, `senderName`, `occasion`, `content` JSON, `settings` JSON, `publishedAt`, `archivedAt`.
+  - `MediaAssets` → pertenecen a un `Gift`; guardan variantes, dimensiones, placeholder, origen (`local`/`external`) y quién subió.
+  - `ContentRequests` → base para links privados del portal (Fase 6): `status`, `allowedFields`, `expiresAt`, `revokedAt`, `lastUsedAt`, `submittedAt`.
+  - `GiftEvents` → aperturas y otros eventos básicos.
+- **Migraciones** `20260914000003` a `…06` crean las tablas; `…07` **copia** los álbumes legados.
+- **Pipeline de media** (`services/media.js`):
+  - Verifica el tipo real por firma binaria (no confía en el MIME del navegador).
+  - Imágenes → `sharp`: respeta orientación EXIF, **elimina metadatos (incl. GPS)**, variantes WebP `thumb` 480px, `md` 1080px, `lg` 2048px y placeholder de 24px.
+  - HEIC rechazado con mensaje claro (el navegador convertirá a JPEG en la Fase 6).
+  - Límites: imagen 25 MB, audio 30 MB, video 150 MB.
+  - Almacenamiento local en `storage/media/<assetId>/…` (fuera de git), servido en `/media` con cache inmutable y soporte `Range`.
+  - Borrado seguro: los regalos duplicados comparten archivos y sólo se eliminan cuando nadie más los usa.
+- **API admin** (`/api/admin`, JWT + rol):
+  - `GET/POST /customers`, `GET/PATCH /customers/:id` (perfil + regalos + actividad).
+  - `GET/POST /gifts` (filtros `q`, `status`, `templateId`, `customerId`, `from`, `to`, paginación), `GET/PATCH /gifts/:id`, `POST /gifts/:id/status`, `POST /gifts/:id/duplicate`, `POST /gifts/:id/media` (1 archivo por petición), `DELETE /gifts/:id/media/:assetId`.
+- Dependencias muertas retiradas: `mongoose`, `qrcode`.
+
+### Preservación de datos legados
+- `…07-copy-legacy-albums` por cada `User` rol `cliente`:
+  - crea un `Customer` (`legacyUserId`),
+  - crea un `Gift` **publicado** con plantilla `yellow-flowers` y `legacyUuid` = uuid original (los QR impresos seguirán funcionando cuando la Fase 3 agregue la redirección),
+  - copia cada `Multimedia` a `MediaAsset` `external` (la URL de la API PHP se conserva),
+  - arma `content`: fotos → `photos`, videos → `videos`, primer audio → `song`. Los audios adicionales quedan como media del regalo.
+- `Users` y `Multimedia` **no se modifican**. La migración es **idempotente** (probado ejecutándola dos veces).
+
+### Verificación
+- `npm test`: 22/22 (incluye EXIF eliminado, archivos falsos, HEIC, Range, duplicado con remapeo de media, migración legada idempotente).
+- Migraciones aplicadas sobre la base de desarrollo.

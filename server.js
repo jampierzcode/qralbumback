@@ -3,6 +3,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const { corsOrigins } = require("./config/config");
 const { notFound, errorHandler } = require("./middleware/errorHandler");
+const storage = require("./services/storage");
 
 function createApp() {
   const app = express();
@@ -25,7 +26,20 @@ function createApp() {
   app.use("/api/auth", require("./routes/auth"));
   app.use("/api/clients", require("./routes/clients"));
   app.use("/api/upload", require("./routes/upload"));
+  app.use("/api/admin", require("./routes/admin"));
   // Eliminado: app.use("/uploads", express.static("uploads")) — exponía temporales.
+
+  // Media procesada (variantes WebP, audio, video). Nombres inmutables → cache larga. Soporta Range.
+  app.use(
+    storage.PUBLIC_PREFIX,
+    express.static(storage.MEDIA_ROOT, {
+      index: false,
+      dotfiles: "deny",
+      immutable: true,
+      maxAge: "365d",
+      fallthrough: false,
+    })
+  );
 
   app.use("/api", notFound);
   app.use(errorHandler);
