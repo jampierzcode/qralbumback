@@ -151,3 +151,11 @@ Verificación: `npm test` 52/52 (tokens manipulados, privacidad, campos permitid
 - `tests/web.test.js` (OG, escape de HTML, 404, SPA, assets, CSP). Los tests sólo sirven frontend cuando lo piden.
 
 Verificación: `npm test` 56/56 · navegación real en `http://localhost:3001` sin violaciones de CSP.
+
+## Respuestas de invitados
+
+- Migración `20260914000009`: tabla `GiftResponses` (tipo, nombre, respuesta, personas, mensaje).
+- `POST /api/public/gifts/:slug/responses` (rate limit 15 / 10 min): sólo regalos publicados cuya plantilla declare el tipo en `manifest.collectsResponses`; respeta `rsvpEnabled`; si la misma persona vuelve a confirmar se actualiza su respuesta.
+- `GET /api/admin/gifts/:id/responses` (resumen + lista) · `DELETE /api/admin/gifts/:id/responses/:responseId`.
+
+Verificación: `npm test` 61/61.
