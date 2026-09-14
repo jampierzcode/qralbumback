@@ -7,6 +7,7 @@ const MediaAsset = require("./MediaAsset");
 const ContentRequest = require("./ContentRequest");
 const GiftEvent = require("./GiftEvent");
 const Collection = require("./Collection");
+const GiftResponse = require("./GiftResponse");
 const { TemplateListing, CollectionTemplate } = require("./TemplateListing");
 
 // Legado (sólo lectura tras la migración al nuevo modelo)
@@ -43,7 +44,11 @@ TemplateListing.belongsToMany(Collection, {
 CollectionTemplate.belongsTo(TemplateListing, { foreignKey: "templateListingId", as: "listing" });
 CollectionTemplate.belongsTo(Collection, { foreignKey: "collectionId", as: "collection" });
 
+Gift.hasMany(GiftResponse, { foreignKey: "giftId", as: "responses" });
+GiftResponse.belongsTo(Gift, { foreignKey: "giftId", as: "gift" });
+
 module.exports = {
+  GiftResponse,
   Collection,
   TemplateListing,
   CollectionTemplate,

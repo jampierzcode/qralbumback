@@ -8,5 +8,6 @@ export default defineSchema({
     message: f.textarea({ label: "Mensaje", max: 500 }),
     photos: f.images({ label: "Fotos", max: 8 }),
     song: f.audio({ label: "Canción" }),
+    rsvpEnabled: f.toggle({ label: "Recibir confirmaciones", default: true }),
   },
 });

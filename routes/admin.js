@@ -6,6 +6,7 @@ const gifts = require("../services/gifts");
 const customers = require("../services/customers");
 const catalog = require("../services/catalog");
 const contentRequests = require("../services/contentRequests");
+const responses = require("../services/responses");
 
 router.use(auth, requireRole("superadmin", "admin"));
 
@@ -43,6 +44,13 @@ router.post("/gifts/:id/media", uploadOne, async (req, res) => {
 });
 router.delete("/gifts/:id/media/:assetId", async (req, res) => {
   await gifts.removeMedia(req.params.id, req.params.assetId);
+  res.status(204).end();
+});
+
+// ── Respuestas de invitados (confirmaciones) ───────────────────────────────
+router.get("/gifts/:id/responses", async (req, res) => res.json(await responses.listResponses(req.params.id, req.query.type)));
+router.delete("/gifts/:id/responses/:responseId", async (req, res) => {
+  await responses.deleteResponse(req.params.id, req.params.responseId);
   res.status(204).end();
 });
 

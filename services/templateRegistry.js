@@ -81,6 +81,7 @@ function publicManifest(manifest) {
     occasions: manifest.occasions || [],
     tier: manifest.tier || "css",
     supportsMusic: Boolean(manifest.supportsMusic),
+    collectsResponses: manifest.collectsResponses || [],
   };
 }
 

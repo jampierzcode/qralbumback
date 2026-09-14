@@ -7,4 +7,5 @@ export default {
   defaultCollections: ["amor"],
   tier: "css",
   supportsMusic: true,
+  collectsResponses: ["rsvp"],
 };
