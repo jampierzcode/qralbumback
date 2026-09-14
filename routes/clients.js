@@ -1,22 +1,22 @@
-// routes/clientRoutes.js
 const router = require("express").Router();
 const auth = require("../middleware/auth");
+const requireRole = require("../middleware/role");
 const {
   getClients,
   createClient,
-  getClientByUUID,
-  updateMaxFiles,
   getFilesByType,
   deleteClient,
-  getClientsWithMultimedia, // 👈 nueva función
+  getClientsWithMultimedia,
 } = require("../controllers/clientController");
 
-router.get("/", auth, getClients);
-router.post("/", auth, createClient);
-router.get("/:uuid", getClientByUUID);
+const admin = [auth, requireRole("superadmin", "admin")];
+
+router.get("/", admin, getClients);
+router.post("/", admin, createClient);
+router.get("/with/multimedia/all", admin, getClientsWithMultimedia);
+// Público: lo usa la vista del álbum. Sólo expone id, tipo, url y nombre.
 router.get("/:uuid/files", getFilesByType);
-router.put("/:id", auth, updateMaxFiles);
-router.delete("/:id", auth, deleteClient);
-router.get("/with/multimedia/all", auth, getClientsWithMultimedia); // 👈 nueva ruta
+router.delete("/:id", admin, deleteClient);
+// Eliminados: GET /:uuid (exponía email y contraseña) y PUT /:id (no hacía nada).
 
 module.exports = router;

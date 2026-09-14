@@ -1,7 +1,7 @@
 const { DataTypes } = require("sequelize");
 const sequelize = require("../config/db");
-const User = require("./User");
 
+// Relaciones declaradas en models/index.js
 const Multimedia = sequelize.define("Multimedia", {
   type: {
     type: DataTypes.ENUM("photo", "video", "audio"),
@@ -15,9 +15,5 @@ const Multimedia = sequelize.define("Multimedia", {
     type: DataTypes.STRING,
   },
 });
-
-// Relación: un usuario (cliente) puede tener muchos archivos multimedia
-Multimedia.belongsTo(User, { foreignKey: "userId" });
-User.hasMany(Multimedia, { foreignKey: "userId" });
 
 module.exports = Multimedia;

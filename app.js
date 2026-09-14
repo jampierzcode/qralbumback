@@ -1,20 +1,29 @@
-const express = require("express");
-const cors = require("cors");
-const { sequelize } = require("./models"); // Importa desde models/index.js
+const config = require("./config/config");
+const sequelize = require("./config/db");
+const { buildMigrator } = require("./db/migrator");
+const { createApp } = require("./server");
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use("/uploads", express.static("uploads"));
+async function start() {
+  try {
+    await sequelize.authenticate();
+  } catch (err) {
+    console.error("❌ No se pudo conectar a MySQL:", err.message);
+    process.exit(1);
+  }
 
-// Rutas
-app.use("/api/auth", require("./routes/auth"));
-app.use("/api/clients", require("./routes/clients"));
-app.use("/api/upload", require("./routes/upload"));
+  // Las migraciones reemplazan a sequelize.sync().
+  const pending = await buildMigrator({ logger: undefined }).pending();
+  if (pending.length) {
+    console.error(
+      `❌ Hay ${pending.length} migración(es) pendiente(s): ${pending.map((m) => m.name).join(", ")}\n` +
+        "   Ejecuta: npm run db:migrate"
+    );
+    process.exit(1);
+  }
 
-// Sync DB y arrancar servidor
-sequelize.sync().then(() => {
-  app.listen(3001, () =>
-    console.log("🚀 Server running on http://localhost:3001")
+  createApp().listen(config.port, () =>
+    console.log(`🚀 Server running on http://localhost:${config.port}`)
   );
-});
+}
+
+start();

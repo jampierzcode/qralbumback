@@ -1,32 +1,33 @@
 const { User } = require("../models");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const { jwtSecret } = require("../config/config");
+const { jwtSecret, jwtExpiresIn } = require("../config/config");
+const { HttpError } = require("../middleware/errorHandler");
+
+const ADMIN_ROLES = ["superadmin", "admin"];
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
-  const user = await User.findOne({ where: { email } });
-  if (!user || !bcrypt.compareSync(password, user.password))
-    return res.sendStatus(401);
+  const email = typeof req.body?.email === "string" ? req.body.email.trim() : "";
+  const password = typeof req.body?.password === "string" ? req.body.password : "";
+  if (!email || !password) throw new HttpError(400, "Ingresa tu correo y contraseña.");
+
+  const user = await User.scope("withPassword").findOne({ where: { email } });
+  const valid = user && (await bcrypt.compare(password, user.password));
+  // Sólo las cuentas administrativas pueden iniciar sesión.
+  if (!valid || !ADMIN_ROLES.includes(user.role)) {
+    throw new HttpError(401, "Correo o contraseña incorrectos.");
+  }
+
   const token = jwt.sign({ id: user.id, role: user.role }, jwtSecret, {
-    expiresIn: "1h",
+    expiresIn: jwtExpiresIn,
   });
-  res.json({ token, role: user.role });
+  res.json({ token, role: user.role, user: { id: user.id, name: user.name, email: user.email } });
 };
-exports.register = async (req, res) => {
-  const { name, email, password, role } = req.body;
 
-  const existing = await User.findOne({ where: { email } });
-  if (existing) return res.status(400).json({ error: "Ya existe el usuario" });
-
-  const hashed = await bcrypt.hash(password, 10);
-
-  const user = await User.create({
-    name,
-    email,
-    password: hashed,
-    role: role || "superadmin",
-  });
-
-  res.json({ success: true, user });
+exports.me = async (req, res) => {
+  const user = await User.findByPk(req.user.id);
+  if (!user || !ADMIN_ROLES.includes(user.role)) {
+    throw new HttpError(401, "Tu sesión ya no es válida.");
+  }
+  res.json({ user: { id: user.id, name: user.name, email: user.email, role: user.role } });
 };

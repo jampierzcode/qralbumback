@@ -1,3 +1,7 @@
 /node_modules
 .env
 .env.local
+# Temporales antiguos de multer (ya no se usan ni se sirven)
+/uploads
+# Archivos subidos (media de regalos)
+/storage
