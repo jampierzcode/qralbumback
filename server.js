@@ -54,17 +54,8 @@ function createApp({ serveWeb = true } = {}) {
   app.use("/api/portal", require("./routes/portal"));
   // Eliminado: app.use("/uploads", express.static("uploads")) — exponía temporales.
 
-  // Media procesada (variantes WebP, audio, video). Nombres inmutables → cache larga. Soporta Range.
-  app.use(
-    storage.PUBLIC_PREFIX,
-    express.static(storage.MEDIA_ROOT, {
-      index: false,
-      dotfiles: "deny",
-      immutable: true,
-      maxAge: "365d",
-      fallthrough: false,
-    })
-  );
+  // Media procesada (variantes WebP, audio, video): disco local o redirección firmada al bucket S3.
+  app.use(storage.PUBLIC_PREFIX, storage.mediaHandler());
 
   app.use("/api", notFound);
 
