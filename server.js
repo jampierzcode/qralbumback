@@ -10,7 +10,8 @@ function createApp({ serveWeb = true } = {}) {
   const app = express();
 
   app.disable("x-powered-by");
-  app.set("trust proxy", 1);
+  // Saltos de proxy confiables para obtener la IP real (rate limit). Railway = 1; Vercel → Railway = 2.
+  app.set("trust proxy", Number(process.env.TRUST_PROXY) || 1);
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: "cross-origin" },
