@@ -5,3 +5,6 @@
 /uploads
 # Archivos subidos (media de regalos)
 /storage
+# Build de producción del frontend (scripts/build-web.js)
+/web
+/.web.tar.gz

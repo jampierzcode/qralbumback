@@ -4,6 +4,7 @@
   "main": "app.js",
   "scripts": {
     "dev": "nodemon app.js",
+    "build": "node scripts/build-web.js",
     "start": "node app.js",
     "db:migrate": "node scripts/migrate.js up",
     "db:migrate:status": "node scripts/migrate.js status",
