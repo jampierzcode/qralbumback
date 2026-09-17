@@ -20,7 +20,10 @@ async function syncTemplateListings() {
 
   for (const { manifest } of templates.values()) {
     if (existing.has(manifest.id)) continue;
-    const listing = await TemplateListing.create({ templateId: manifest.id, isActive: true, sortOrder: order++ });
+    // El precio de referido sugerido viaja en el manifest y sólo se aplica al
+    // crear el listing: lo que edites en el admin nunca se pisa.
+    const referralPrice = Number.isFinite(manifest.referralPrice) ? manifest.referralPrice : null;
+    const listing = await TemplateListing.create({ templateId: manifest.id, isActive: true, sortOrder: order++, referralPrice });
     created.push(manifest.id);
 
     const slugs = manifest.defaultCollections || [];
