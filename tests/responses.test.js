@@ -7,6 +7,7 @@ let token;
 let invitation;
 let flowers;
 const admin = (method, url, opts = {}) => api.request(method, url, { token, ...opts });
+const lista_token_falso = (t) => `${t.slice(0, -1)}${t.at(-1) === "A" ? "B" : "A"}`;
 const rsvp = (slug, body) => api.request("POST", `/api/public/gifts/${slug}/responses`, { body: { type: "rsvp", ...body } });
 
 async function publishedGift(templateId, content = {}) {
@@ -67,4 +68,25 @@ test("el admin puede borrar una respuesta y exige sesión", async () => {
   assert.equal((await admin("DELETE", `/api/admin/gifts/${invitation.id}/responses/${target.id}`)).status, 204);
   const after = await admin("GET", `/api/admin/gifts/${invitation.id}/responses`);
   assert.equal(after.body.items.length, list.body.items.length - 1);
+});
+
+test("la lista de invitados se abre con su propio link, sin cuenta", async () => {
+  const gift = await admin("GET", `/api/admin/gifts/${invitation.id}`);
+  const token = gift.body.guestListToken;
+  assert.match(token, /^[A-Za-z0-9_-]{22}~[A-Za-z0-9_-]{32}$/);
+
+  const lista = await api.request("GET", `/api/public/guest-list/${token}`);
+  assert.equal(lista.status, 200);
+  assert.equal(lista.body.gift.recipientName, gift.body.recipientName);
+  assert.equal(lista.body.summary.yes + lista.body.summary.maybe + lista.body.summary.no, lista.body.items.length);
+  // No se filtra nada del regalo ni del negocio.
+  assert.equal(lista.body.gift.slug, undefined);
+  assert.equal(lista.body.gift.price, undefined);
+
+  // Un token manipulado no abre nada.
+  assert.equal((await api.request("GET", `/api/public/guest-list/${lista_token_falso(token)}`)).status, 404);
+
+  // Una plantilla sin confirmaciones no tiene lista.
+  const sinLista = await admin("GET", `/api/admin/gifts/${flowers.id}`);
+  assert.equal(sinLista.body.guestListToken, null);
 });

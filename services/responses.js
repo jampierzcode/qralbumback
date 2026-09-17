@@ -3,6 +3,7 @@
 const { fn, col } = require("sequelize");
 const { Gift, GiftResponse } = require("../models");
 const { HttpError } = require("../middleware/errorHandler");
+const { verifyGuestListToken } = require("../utils/guestListToken");
 const registry = require("./templateRegistry");
 
 const TYPES = {
@@ -69,4 +70,32 @@ async function deleteResponse(giftId, id) {
   if (!deleted) throw new HttpError(404, "Respuesta no encontrada.");
 }
 
-module.exports = { createResponse, listResponses, deleteResponse };
+/**
+ * Lista pública para quien compró la invitación: entra con su link y ve cómo va,
+ * sin cuenta y sin poder tocar nada del regalo.
+ */
+async function guestList(token) {
+  const giftId = verifyGuestListToken(token);
+  const gift = giftId ? await Gift.findByPk(giftId) : null;
+  if (!gift) throw new HttpError(404, "Esta lista no existe o el link cambió.");
+  const template = await registry.getTemplate(gift.templateId);
+  if (!template?.manifest.collectsResponses?.includes("rsvp")) {
+    throw new HttpError(404, "Este regalo no recibe confirmaciones.");
+  }
+  const { summary, items } = await listResponses(gift.id, "rsvp");
+  const content = gift.content || {};
+  return {
+    gift: {
+      recipientName: gift.recipientName,
+      templateName: template.manifest.name,
+      eventDate: content.eventDate || null,
+      eventTime: content.eventTime || null,
+      venueName: content.venueName || null,
+      published: gift.status === "published",
+    },
+    summary,
+    items: items.map(({ id, name, answer, guests, message, updatedAt }) => ({ id, name, answer, guests, message, updatedAt })),
+  };
+}
+
+module.exports = { createResponse, listResponses, deleteResponse, guestList };

@@ -20,6 +20,12 @@ router.post("/gifts/:slug/responses", responsesLimiter, async (req, res) => {
   res.status(201).json(await responses.createResponse(req.params.slug, req.body));
 });
 
+// Lista de invitados: el link que el comprador comparte consigo mismo para ver cómo va.
+router.get("/guest-list/:token", eventsLimiter, async (req, res) => {
+  res.set("Cache-Control", "no-store");
+  res.json(await responses.guestList(req.params.token));
+});
+
 // Links antiguos /c/:uuid → slug nuevo
 router.get("/legacy/:uuid", async (req, res) => res.json(await publicGifts.resolveLegacyUuid(req.params.uuid)));
 

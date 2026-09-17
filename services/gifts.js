@@ -9,6 +9,7 @@ const media = require("./media");
 const registry = require("./templateRegistry");
 const contentValidation = require("./contentValidation");
 const sellers = require("./sellers");
+const { signGuestListToken } = require("../utils/guestListToken");
 
 const TEMPLATE_ID = /^[a-z0-9][a-z0-9-]{1,62}$/;
 const REVIEW_STATUSES = ["none", "pending", "approved", "rejected"];
@@ -172,7 +173,10 @@ async function getGift(id, actor = null) {
   });
   assertOwnership(gift, actor);
   const opens = await GiftEvent.count({ where: { giftId: gift.id, type: "opened" } });
-  return { ...serializeGift(gift, { includeMedia: true, actor }), stats: { opens } };
+  const template = await registry.getTemplate(gift.templateId);
+  // Link de la lista de invitados (sólo para plantillas que reciben confirmaciones).
+  const guestListToken = template?.manifest.collectsResponses?.includes("rsvp") ? signGuestListToken(gift.id) : null;
+  return { ...serializeGift(gift, { includeMedia: true, actor }), guestListToken, stats: { opens } };
 }
 
 function readBasics(body) {

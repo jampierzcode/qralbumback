@@ -74,3 +74,12 @@ ni en el contenido del regalo.
 Hoy el cobro es manual (Yape) y el sistema sólo lleva la cuenta. Cuando se integre una pasarela
 (Culqi), el pago del referido puede aprobar el regalo solo: bastaría llamar a `referrals.review(...)`
 desde el webhook de pago y dejar el flujo manual como respaldo.
+
+## Lista de invitados (link del comprador)
+
+Las plantillas con `collectsResponses: ["rsvp"]` generan un segundo link, de sólo lectura, para quien
+compró la invitación: `/lista/<token>` (`GET /api/public/guest-list/:token`). Muestra el resumen y las
+respuestas, se actualiza al volver a la pestaña y no expone nada del regalo (ni slug, ni precios).
+
+El token se firma como el del portal pero con otra clave (`utils/guestListToken.js`), así un link no
+sirve para el otro. Se copia desde el editor → **Confirmaciones**.
