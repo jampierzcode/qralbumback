@@ -2,7 +2,7 @@ const config = require("./config/config");
 const sequelize = require("./config/db");
 const { buildMigrator } = require("./db/migrator");
 const { createApp } = require("./server");
-const { syncTemplateListings } = require("./services/catalog");
+const { seedDefaultCollections, syncTemplateListings } = require("./services/catalog");
 
 async function start() {
   try {
@@ -23,7 +23,10 @@ async function start() {
   }
 
   // Registra en el catálogo las plantillas nuevas encontradas en el repositorio.
+  // Las colecciones sugeridas se crean antes (idempotente por slug) para que una
+  // plantilla nueva caiga en su colección sin tener que correr el seed a mano.
   try {
+    await seedDefaultCollections();
     const created = await syncTemplateListings();
     if (created.length) console.log(`🧩 Plantillas nuevas en el catálogo: ${created.join(", ")}`);
   } catch (err) {
