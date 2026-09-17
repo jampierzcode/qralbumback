@@ -44,7 +44,7 @@ test("sincronizar de nuevo no duplica ni pisa ediciones del admin", async () => 
 test("una plantilla puede estar en varias colecciones y las colecciones iniciales existen", async () => {
   const res = await req("GET", "/api/admin/collections");
   const bySlug = Object.fromEntries(res.body.items.map((c) => [c.slug, c]));
-  assert.deepEqual(Object.keys(bySlug).sort(), ["amistad", "amor", "aniversario", "boda", "cumpleanos", "flores", "save-the-date"]);
+  assert.deepEqual(Object.keys(bySlug).sort(), ["amistad", "amor", "aniversario", "baby-shower", "boda", "cumpleanos", "flores", "save-the-date"]);
   assert.ok(bySlug.amor.templateIds.includes("yellow-flowers"));
   assert.ok(bySlug.amor.templateIds.includes("love-letter"));
   assert.ok(bySlug.flores.templateIds.includes("yellow-flowers"));
