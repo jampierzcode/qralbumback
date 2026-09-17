@@ -21,7 +21,10 @@ Cada vendedor (dueño o referido) comparte `/pedir/<handle>`. El cliente final e
 
 ## Ajustes del vendedor (`/admin/business`)
 
-- `Users.handle` (link), `publicName`, `publicMessage`, `ordersEnabled`.
+- `Users.handle`: código corto al azar (8 caracteres, como el slug de los regalos). No se escribe a
+  mano —el link no revela el nombre del vendedor ni deja adivinar el de otro— y se puede renovar con
+  `PATCH /api/admin/store { regenerate: true }`; el anterior deja de abrir.
+- `publicName`, `publicMessage`, `ordersEnabled`.
 - Precios: `SellerTemplatePrices`. Cobros: `PaymentMethods`.
 
 ## Datos del pedido en `Gifts`

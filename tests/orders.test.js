@@ -44,10 +44,12 @@ after(async () => {
 
 describe("tienda pública", () => {
   test("no abre hasta que el vendedor la activa", async () => {
-    assert.equal(handle, "ana-torres");
+    // El link es un código corto al azar: no lleva el nombre del vendedor.
+    assert.match(handle, /^[2-9a-z]{8}$/);
     // Activar la tienda sin pedir antes los ajustes también deja link listo.
     const directo = await admin("PATCH", "/api/admin/store", { body: { ordersEnabled: false } });
-    assert.ok(directo.body.handle);
+    assert.match(directo.body.handle, /^[2-9a-z]{8}$/);
+    assert.notEqual(directo.body.handle, handle);
     assert.equal((await pub("GET", `/api/public/store/${handle}`)).status, 404);
     await referral("PATCH", "/api/admin/store", { body: { ordersEnabled: true, publicName: "Detalles de Ana" } });
     const abierta = await pub("GET", `/api/public/store/${handle}`);
@@ -62,14 +64,18 @@ describe("tienda pública", () => {
     assert.equal(store.body.items[0].cost, undefined);
   });
 
-  test("el link se puede personalizar y no se repite", async () => {
-    const otro = await admin("PATCH", "/api/admin/store", { body: { handle: "ana-torres" } });
-    assert.equal(otro.status, 409);
-    const corto = await referral("PATCH", "/api/admin/store", { body: { handle: "ab" } });
-    assert.equal(corto.status, 400);
-    const ok = await referral("PATCH", "/api/admin/store", { body: { handle: "Detalles de Ana!" } });
-    assert.equal(ok.body.handle, "detalles-de-ana");
-    handle = ok.body.handle;
+  test("el link se puede renovar y el anterior deja de abrir", async () => {
+    const anterior = handle;
+    // Nadie elige su link a mano: sólo se puede pedir uno nuevo.
+    const intento = await referral("PATCH", "/api/admin/store", { body: { handle: "detalles-de-ana" } });
+    assert.equal(intento.body.handle, anterior);
+
+    const renovado = await referral("PATCH", "/api/admin/store", { body: { regenerate: true } });
+    assert.match(renovado.body.handle, /^[2-9a-z]{8}$/);
+    assert.notEqual(renovado.body.handle, anterior);
+    assert.equal((await pub("GET", `/api/public/store/${anterior}`)).status, 404);
+    handle = renovado.body.handle;
+    assert.equal((await pub("GET", `/api/public/store/${handle}`)).status, 200);
   });
 });
 

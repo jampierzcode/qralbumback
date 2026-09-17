@@ -6,7 +6,6 @@ const { Op } = require("sequelize");
 const { User, Gift, Customer, ContentRequest, MediaAsset, sequelize } = require("../models");
 const { HttpError } = require("../middleware/errorHandler");
 const { optionalString, requiredString } = require("../utils/input");
-const { slugify } = require("../utils/slugify");
 const { randomSlug } = require("../utils/slug");
 const { signPortalToken } = require("../utils/portalToken");
 const registry = require("./templateRegistry");
@@ -17,14 +16,14 @@ const media = require("./media");
 const DAY = 24 * 60 * 60 * 1000;
 const ORDER_DAYS = 14;
 
-async function uniqueHandle(base, userId) {
-  let candidate = slugify(base).slice(0, 32) || "vendedor";
-  for (let i = 0; i < 20; i++) {
-    const taken = await User.findOne({ where: { handle: candidate, id: { [Op.ne]: userId || 0 } } });
-    if (!taken) return candidate;
-    candidate = `${slugify(base).slice(0, 28)}-${i + 2}`;
+// Código corto al azar (como el de los regalos): el link no revela el nombre del vendedor
+// ni se puede adivinar el de otro.
+async function uniqueHandle() {
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const candidate = randomSlug(8);
+    if (!(await User.count({ where: { handle: candidate } }))) return candidate;
   }
-  return `${candidate}-${crypto.randomInt(1000)}`;
+  throw new HttpError(500, "No pudimos generar tu link. Intenta de nuevo.");
 }
 
 function serializeStoreSettings(user) {
@@ -40,25 +39,20 @@ function serializeStoreSettings(user) {
 /** Ajustes de la tienda del vendedor que entró. */
 async function getStore(userId) {
   const user = await User.findByPk(userId);
-  if (!user.handle) await user.update({ handle: await uniqueHandle(user.name, user.id) });
+  if (!user.handle) await user.update({ handle: await uniqueHandle() });
   return serializeStoreSettings(user);
 }
 
 async function updateStore(userId, body = {}) {
   const user = await User.findByPk(userId);
   const changes = {};
-  if (body.handle !== undefined) {
-    const wanted = slugify(requiredString(body.handle, { field: "handle", label: "El link", max: 40 }));
-    if (wanted.length < 3) throw new HttpError(400, "El link debe tener al menos 3 letras.");
-    const taken = await User.findOne({ where: { handle: wanted, id: { [Op.ne]: userId } } });
-    if (taken) throw new HttpError(409, "Ese link ya está tomado. Prueba con otro.");
-    changes.handle = wanted;
-  }
+  // El link no se escribe a mano: se genera solo y se puede renovar.
+  if (body.regenerate === true) changes.handle = await uniqueHandle();
   if (body.publicName !== undefined) changes.publicName = optionalString(body.publicName, { field: "publicName", max: 120 }) || null;
   if (body.publicMessage !== undefined) changes.publicMessage = optionalString(body.publicMessage, { field: "publicMessage", max: 300 }) || null;
   if (body.ordersEnabled !== undefined) changes.ordersEnabled = Boolean(body.ordersEnabled);
   // Siempre hay link: si nunca se abrió la tienda, se genera desde su nombre.
-  if (!user.handle && !changes.handle) changes.handle = await uniqueHandle(user.name, user.id);
+  if (!user.handle && !changes.handle) changes.handle = await uniqueHandle();
   await user.update(changes);
   return serializeStoreSettings(user);
 }
