@@ -28,6 +28,13 @@ const Gift = sequelize.define("Gift", {
   currency: { type: DataTypes.STRING(3), allowNull: false, defaultValue: "PEN" },
   paidAt: { type: DataTypes.DATE, allowNull: true },
   paymentProofAssetId: { type: DataTypes.UUID, allowNull: true },
+  // Pedido hecho desde la tienda pública del vendedor.
+  requestStatus: { type: DataTypes.ENUM("none", "draft", "pending", "accepted", "rejected"), allowNull: false, defaultValue: "none" },
+  requesterName: { type: DataTypes.STRING(120), allowNull: true },
+  requesterPhone: { type: DataTypes.STRING(40), allowNull: true },
+  requestedAt: { type: DataTypes.DATE, allowNull: true },
+  requestNote: { type: DataTypes.STRING(300), allowNull: true },
+  clientProofAssetId: { type: DataTypes.UUID, allowNull: true },
   legacyUuid: { type: DataTypes.STRING(64), allowNull: true },
   publishedAt: { type: DataTypes.DATE, allowNull: true },
   archivedAt: { type: DataTypes.DATE, allowNull: true },

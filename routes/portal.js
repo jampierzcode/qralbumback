@@ -37,6 +37,14 @@ router.delete("/:token/media/:assetId", async (req, res) => {
   res.status(204).end();
 });
 
+router.post("/:token/payment-proof", portalUploadLimiter, uploadOne, async (req, res) => {
+  try {
+    res.status(201).json(await contentRequests.addPaymentProof(req.params.token, req.file));
+  } finally {
+    await cleanupTempFiles(req);
+  }
+});
+
 router.post("/:token/submit", async (req, res) => res.json(await contentRequests.submit(req.params.token)));
 
 module.exports = router;

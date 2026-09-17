@@ -89,6 +89,12 @@ function serializeGift(gift, { includeMedia = false, actor = null } = {}) {
     currency: gift.currency,
     paidAt: gift.paidAt,
     hasPaymentProof: Boolean(gift.paymentProofAssetId),
+    requestStatus: gift.requestStatus,
+    requesterName: gift.requesterName,
+    requesterPhone: gift.requesterPhone,
+    requestedAt: gift.requestedAt,
+    requestNote: gift.requestNote,
+    hasClientProof: Boolean(gift.clientProofAssetId),
     canShare: shareable,
     publishedAt: gift.publishedAt,
     archivedAt: gift.archivedAt,
@@ -96,8 +102,9 @@ function serializeGift(gift, { includeMedia = false, actor = null } = {}) {
     updatedAt: gift.updatedAt,
   };
   if (includeMedia) {
-    // El comprobante de pago no es parte del regalo: no aparece en el editor.
-    data.media = (gift.media || []).filter((a) => a.id !== gift.paymentProofAssetId).map(media.serializeAsset);
+    // Los comprobantes de pago no son parte del regalo: no aparecen en el editor.
+    const proofs = [gift.paymentProofAssetId, gift.clientProofAssetId].filter(Boolean);
+    data.media = (gift.media || []).filter((a) => !proofs.includes(a.id)).map(media.serializeAsset);
   }
   return data;
 }
@@ -106,6 +113,7 @@ async function listGifts(query = {}, actor = null) {
   const where = {};
   if (isReferral(actor)) where.createdById = actor.id;
   else if (query.createdById) where.createdById = optionalInt(query.createdById, { field: "createdById" });
+  if (query.requestStatus) where.requestStatus = String(query.requestStatus);
   if (query.reviewStatus) {
     if (!REVIEW_STATUSES.includes(query.reviewStatus)) throw new HttpError(400, "Estado de revisión inválido.");
     where.reviewStatus = query.reviewStatus;

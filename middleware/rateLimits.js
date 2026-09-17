@@ -15,5 +15,7 @@ const portalLimiter = rateLimit({ ...base, windowMs: 60 * 1000, limit: 120 });
 const portalUploadLimiter = rateLimit({ ...base, windowMs: 10 * 60 * 1000, limit: 80 });
 
 const responsesLimiter = rateLimit({ ...base, windowMs: 10 * 60 * 1000, limit: 15 });
+// Pedidos de la tienda pública: evita que llenen el panel del vendedor.
+const ordersLimiter = rateLimit({ ...base, windowMs: 60 * 60 * 1000, limit: 10 });
 
-module.exports = { loginLimiter, eventsLimiter, portalLimiter, portalUploadLimiter, responsesLimiter };
+module.exports = { loginLimiter, eventsLimiter, portalLimiter, portalUploadLimiter, responsesLimiter, ordersLimiter };

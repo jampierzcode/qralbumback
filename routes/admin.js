@@ -9,6 +9,7 @@ const contentRequests = require("../services/contentRequests");
 const responses = require("../services/responses");
 const referrals = require("../services/referrals");
 const sellers = require("../services/sellers");
+const orders = require("../services/orders");
 
 // Los referidos entran al mismo panel, pero sólo ven lo suyo (el scope va en cada servicio).
 router.use(auth, requireRole("superadmin", "admin", "referido"));
@@ -74,6 +75,12 @@ router.delete("/payment-methods/:id", async (req, res) => {
 });
 // Datos con los que el referido le paga al dueño.
 router.get("/owner-payment-methods", async (req, res) => res.json(await sellers.ownerMethods()));
+
+// Mi tienda pública (link para recibir pedidos)
+router.get("/store", async (req, res) => res.json(await orders.getStore(req.user.id)));
+router.patch("/store", async (req, res) => res.json(await orders.updateStore(req.user.id, req.body)));
+router.get("/gifts/:id/client-proof", async (req, res) => res.json(await orders.clientProof(req.params.id, req.user)));
+router.post("/gifts/:id/order-review", async (req, res) => res.json(await orders.reviewOrder(req.params.id, req.body, req.user)));
 
 router.get("/my-catalog", async (req, res) => res.json({ items: await sellers.catalogFor(req.user.id) }));
 router.put("/my-catalog/:templateId", async (req, res) =>

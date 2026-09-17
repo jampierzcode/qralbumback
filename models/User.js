@@ -30,6 +30,11 @@ const User = sequelize.define(
       type: DataTypes.STRING(40),
       allowNull: true,
     },
+    // Tienda pública: /pedir/<handle>
+    handle: { type: DataTypes.STRING(40), allowNull: true, unique: true },
+    publicName: { type: DataTypes.STRING(120), allowNull: true },
+    publicMessage: { type: DataTypes.STRING(300), allowNull: true },
+    ordersEnabled: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: false },
     uuid: {
       type: DataTypes.STRING,
       unique: true,

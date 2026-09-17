@@ -8,6 +8,7 @@ const registry = require("./templateRegistry");
 const { loadGiftCore } = require("./giftCore");
 const contentValidation = require("./contentValidation");
 const media = require("./media");
+const orders = require("./orders");
 
 const DAY = 24 * 60 * 60 * 1000;
 const EDITABLE_GIFT_STATUSES = ["draft", "collecting_content", "ready"];
@@ -135,6 +136,8 @@ async function portalView(token) {
   await touch(request);
   return {
     status: request.status,
+    // Si vino de la tienda pública: precio, cómo pagar y si ya subió su comprobante.
+    order: await orders.orderInfo(gift),
     expiresAt: request.expiresAt,
     template: { id: manifest.id, name: manifest.name, version: gift.templateVersion },
     // Sólo lo necesario para personalizar el mensaje de bienvenida y el formulario.
@@ -178,9 +181,23 @@ async function submit(token) {
   await contentValidation.assertComplete(gift, { keys: request.allowedFields, message: "Faltan algunos datos antes de enviar." });
   await sequelize.transaction(async (transaction) => {
     await request.update({ status: "submitted", submittedAt: new Date(), lastUsedAt: new Date() }, { transaction });
-    if (["draft", "collecting_content"].includes(gift.status)) await gift.update({ status: "ready" }, { transaction });
+    const changes = {};
+    if (["draft", "collecting_content"].includes(gift.status)) changes.status = "ready";
+    // Pedido de la tienda pública: queda esperando que el vendedor lo acepte.
+    if (gift.requestStatus === "draft") {
+      changes.requestStatus = "pending";
+      changes.requestedAt = new Date();
+    }
+    if (Object.keys(changes).length) await gift.update(changes, { transaction });
   });
   return { status: "submitted" };
 }
 
-module.exports = { createRequest, listRequests, revokeRequest, portalView, updateContent, addMedia, removeMedia, submit, serializeRequest };
+/** Comprobante de pago del cliente final (opcional). */
+async function addPaymentProof(token, file) {
+  const { gift } = await resolve(token, { allowSubmitted: true });
+  if (gift.requestStatus === "none") throw new HttpError(409, "Este regalo no acepta comprobantes.");
+  return orders.attachClientProof(gift, file);
+}
+
+module.exports = { createRequest, listRequests, revokeRequest, portalView, updateContent, addMedia, removeMedia, submit, addPaymentProof, serializeRequest };
