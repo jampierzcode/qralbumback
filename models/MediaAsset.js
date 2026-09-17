@@ -17,7 +17,7 @@ const MediaAsset = sequelize.define("MediaAsset", {
   variants: { type: DataTypes.JSON, allowNull: false, defaultValue: {} },
   placeholder: { type: DataTypes.TEXT, allowNull: true },
   originalName: { type: DataTypes.STRING(255), allowNull: true },
-  uploadedBy: { type: DataTypes.ENUM("admin", "customer"), allowNull: false, defaultValue: "admin" },
+  uploadedBy: { type: DataTypes.ENUM("admin", "customer", "referral"), allowNull: false, defaultValue: "admin" },
   legacyMultimediaId: { type: DataTypes.INTEGER, allowNull: true },
 });
 

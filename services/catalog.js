@@ -65,6 +65,7 @@ async function listTemplates() {
       manifest,
       isActive: listing.isActive,
       sortOrder: listing.sortOrder,
+      referralPrice: listing.referralPrice === null || listing.referralPrice === undefined ? null : Number(listing.referralPrice),
       collections: listing.collections.map((c) => ({ id: c.id, name: c.name, slug: c.slug })),
       giftsCount: usageById[listing.templateId] || 0,
     };
@@ -80,6 +81,14 @@ async function updateTemplate(templateId, body = {}) {
     changes.description = optionalString(body.description, { field: "description", max: 1000 }) || null;
   if (body.isActive !== undefined) changes.isActive = Boolean(body.isActive);
   if (body.sortOrder !== undefined) changes.sortOrder = Number(body.sortOrder) || 0;
+  if (body.referralPrice !== undefined) {
+    if (body.referralPrice === null || body.referralPrice === "") changes.referralPrice = null;
+    else {
+      const price = Number(body.referralPrice);
+      if (!Number.isFinite(price) || price < 0 || price > 99999) throw new HttpError(400, "Precio inválido.");
+      changes.referralPrice = price;
+    }
+  }
   await listing.update(changes);
   return (await listTemplates()).find((t) => t.templateId === templateId);
 }

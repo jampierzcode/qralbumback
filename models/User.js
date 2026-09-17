@@ -18,8 +18,17 @@ const User = sequelize.define(
       allowNull: false,
     },
     role: {
-      type: DataTypes.ENUM("superadmin", "admin", "cliente"),
+      type: DataTypes.ENUM("superadmin", "admin", "cliente", "referido"),
       defaultValue: "cliente",
+    },
+    isActive: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: true,
+    },
+    phone: {
+      type: DataTypes.STRING(40),
+      allowNull: true,
     },
     uuid: {
       type: DataTypes.STRING,

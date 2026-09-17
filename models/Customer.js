@@ -7,6 +7,7 @@ const Customer = sequelize.define("Customer", {
   phone: { type: DataTypes.STRING(32), allowNull: true },
   email: { type: DataTypes.STRING(160), allowNull: true },
   notes: { type: DataTypes.TEXT, allowNull: true },
+  createdById: { type: DataTypes.INTEGER, allowNull: true },
   legacyUserId: { type: DataTypes.INTEGER, allowNull: true },
 });
 

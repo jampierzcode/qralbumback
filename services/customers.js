@@ -2,7 +2,7 @@ const { Op, fn, col, literal } = require("sequelize");
 const { Customer, Gift, GiftEvent, ContentRequest } = require("../models");
 const { HttpError } = require("../middleware/errorHandler");
 const { requiredString, optionalString } = require("../utils/input");
-const { serializeGift } = require("./gifts");
+const { serializeGift, isReferral } = require("./gifts");
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -42,8 +42,9 @@ function serializeCustomer(c) {
   };
 }
 
-async function listCustomers(query = {}) {
+async function listCustomers(query = {}, actor = null) {
   const where = {};
+  if (isReferral(actor)) where.createdById = actor.id;
   if (query.q) {
     const like = { [Op.like]: `%${String(query.q).trim()}%` };
     where[Op.or] = [{ name: like }, { phone: like }, { email: like }];
@@ -62,23 +63,31 @@ async function listCustomers(query = {}) {
   return rows.map(serializeCustomer);
 }
 
-async function createCustomer(body = {}) {
-  const customer = await Customer.create(readCustomer(body));
+async function createCustomer(body = {}, actor = null) {
+  const customer = await Customer.create({ ...readCustomer(body), createdById: actor?.id ?? null });
   return serializeCustomer(customer);
 }
 
-async function updateCustomer(id, body = {}) {
-  const customer = await Customer.findByPk(id);
-  if (!customer) throw new HttpError(404, "Cliente no encontrado.");
+async function updateCustomer(id, body = {}, actor = null) {
+  const customer = await findCustomerOr404(id, actor);
   await customer.update(readCustomer(body, { partial: true }));
   return serializeCustomer(customer);
 }
 
-async function getCustomer(id) {
+// Un referido sólo ve los clientes que él registró.
+async function findCustomerOr404(id, actor) {
   const customer = await Customer.findByPk(id);
-  if (!customer) throw new HttpError(404, "Cliente no encontrado.");
+  if (!customer || (isReferral(actor) && customer.createdById !== actor.id)) {
+    throw new HttpError(404, "Cliente no encontrado.");
+  }
+  return customer;
+}
 
-  const gifts = await Gift.findAll({ where: { customerId: id }, order: [["updatedAt", "DESC"]] });
+async function getCustomer(id, actor = null) {
+  const customer = await findCustomerOr404(id, actor);
+
+  const giftScope = isReferral(actor) ? { customerId: id, createdById: actor.id } : { customerId: id };
+  const gifts = await Gift.findAll({ where: giftScope, order: [["updatedAt", "DESC"]] });
   const giftIds = gifts.map((g) => g.id);
 
   // Actividad: línea de tiempo simple construida desde fechas y eventos.
@@ -108,7 +117,7 @@ async function getCustomer(id) {
   return {
     ...serializeCustomer(customer),
     giftsCount: gifts.filter((g) => g.status !== "archived").length,
-    gifts: gifts.map((g) => serializeGift(g)),
+    gifts: gifts.map((g) => serializeGift(g, { actor })),
     activity: activity.slice(0, 50),
   };
 }

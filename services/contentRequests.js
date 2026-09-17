@@ -71,9 +71,13 @@ async function listRequests(giftId) {
   return requests.map(serializeRequest);
 }
 
-async function revokeRequest(id) {
+async function revokeRequest(id, actor = null) {
   const request = await ContentRequest.findByPk(id);
   if (!request) throw new HttpError(404, "Link no encontrado.");
+  if (actor?.role === "referido") {
+    const gift = await Gift.findByPk(request.giftId);
+    if (!gift || gift.createdById !== actor.id) throw new HttpError(404, "Link no encontrado.");
+  }
   if (request.status !== "revoked") await request.update({ status: "revoked", revokedAt: new Date() });
   return serializeRequest(request);
 }

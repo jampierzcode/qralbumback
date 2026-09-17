@@ -18,6 +18,12 @@ Multimedia.belongsTo(User, { foreignKey: "userId" });
 Customer.hasMany(Gift, { foreignKey: "customerId", as: "gifts" });
 Gift.belongsTo(Customer, { foreignKey: "customerId", as: "customer" });
 
+User.hasMany(Gift, { foreignKey: "createdById", as: "createdGifts" });
+Gift.belongsTo(User, { foreignKey: "createdById", as: "createdBy" });
+Gift.belongsTo(User, { foreignKey: "reviewedById", as: "reviewedBy" });
+User.hasMany(Customer, { foreignKey: "createdById", as: "createdCustomers" });
+Customer.belongsTo(User, { foreignKey: "createdById", as: "createdBy" });
+
 Gift.hasMany(MediaAsset, { foreignKey: "giftId", as: "media" });
 MediaAsset.belongsTo(Gift, { foreignKey: "giftId", as: "gift" });
 

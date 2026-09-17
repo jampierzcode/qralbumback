@@ -1,6 +1,6 @@
 const crypto = require("crypto");
 const { Op, fn, col } = require("sequelize");
-const { Gift, Customer, MediaAsset, GiftEvent, CollectionTemplate, TemplateListing, sequelize } = require("../models");
+const { Gift, Customer, User, MediaAsset, GiftEvent, CollectionTemplate, TemplateListing, sequelize } = require("../models");
 const { GIFT_STATUSES } = require("../models/Gift");
 const { HttpError } = require("../middleware/errorHandler");
 const { randomSlug } = require("../utils/slug");
@@ -10,6 +10,22 @@ const registry = require("./templateRegistry");
 const contentValidation = require("./contentValidation");
 
 const TEMPLATE_ID = /^[a-z0-9][a-z0-9-]{1,62}$/;
+const REVIEW_STATUSES = ["none", "pending", "approved", "rejected"];
+
+// Un referido sólo ve y edita lo que él creó, y no puede compartir hasta que apruebes.
+function isReferral(actor) {
+  return actor?.role === "referido";
+}
+
+function assertOwnership(gift, actor) {
+  if (isReferral(actor) && gift.createdById !== actor.id) throw new HttpError(404, "Regalo no encontrado.");
+  return gift;
+}
+
+// El link/QR sólo existe para el referido cuando el regalo está aprobado.
+function canShare(gift, actor) {
+  return !isReferral(actor) || gift.reviewStatus === "approved";
+}
 
 async function uniqueSlug(transaction) {
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -44,10 +60,11 @@ function remapAssetIds(value, map) {
   return value;
 }
 
-function serializeGift(gift, { includeMedia = false } = {}) {
+function serializeGift(gift, { includeMedia = false, actor = null } = {}) {
+  const shareable = canShare(gift, actor);
   const data = {
     id: gift.id,
-    slug: gift.slug,
+    slug: shareable ? gift.slug : null,
     customerId: gift.customerId,
     customer: gift.customer ? { id: gift.customer.id, name: gift.customer.name, phone: gift.customer.phone } : null,
     templateId: gift.templateId,
@@ -59,17 +76,37 @@ function serializeGift(gift, { includeMedia = false } = {}) {
     content: gift.content || {},
     settings: gift.settings || {},
     isLegacy: Boolean(gift.legacyUuid),
+    createdById: gift.createdById,
+    createdBy: gift.createdBy ? { id: gift.createdBy.id, name: gift.createdBy.name } : null,
+    reviewStatus: gift.reviewStatus,
+    submittedAt: gift.submittedAt,
+    reviewedAt: gift.reviewedAt,
+    reviewNote: gift.reviewNote,
+    price: gift.price === null || gift.price === undefined ? null : Number(gift.price),
+    currency: gift.currency,
+    paidAt: gift.paidAt,
+    hasPaymentProof: Boolean(gift.paymentProofAssetId),
+    canShare: shareable,
     publishedAt: gift.publishedAt,
     archivedAt: gift.archivedAt,
     createdAt: gift.createdAt,
     updatedAt: gift.updatedAt,
   };
-  if (includeMedia) data.media = (gift.media || []).map(media.serializeAsset);
+  if (includeMedia) {
+    // El comprobante de pago no es parte del regalo: no aparece en el editor.
+    data.media = (gift.media || []).filter((a) => a.id !== gift.paymentProofAssetId).map(media.serializeAsset);
+  }
   return data;
 }
 
-async function listGifts(query = {}) {
+async function listGifts(query = {}, actor = null) {
   const where = {};
+  if (isReferral(actor)) where.createdById = actor.id;
+  else if (query.createdById) where.createdById = optionalInt(query.createdById, { field: "createdById" });
+  if (query.reviewStatus) {
+    if (!REVIEW_STATUSES.includes(query.reviewStatus)) throw new HttpError(400, "Estado de revisión inválido.");
+    where.reviewStatus = query.reviewStatus;
+  }
   const page = Math.max(1, Number(query.page) || 1);
   const pageSize = Math.min(100, Math.max(1, Number(query.pageSize) || 24));
 
@@ -109,26 +146,31 @@ async function listGifts(query = {}) {
 
   const { rows, count } = await Gift.findAndCountAll({
     where,
-    include: [{ model: Customer, as: "customer", attributes: ["id", "name", "phone"] }],
+    include: [
+      { model: Customer, as: "customer", attributes: ["id", "name", "phone"] },
+      { model: User, as: "createdBy", attributes: ["id", "name"] },
+    ],
     order: [["updatedAt", "DESC"]],
     limit: pageSize,
     offset: (page - 1) * pageSize,
     subQuery: false,
   });
 
-  return { items: rows.map((g) => serializeGift(g)), total: count, page, pageSize };
+  return { items: rows.map((g) => serializeGift(g, { actor })), total: count, page, pageSize };
 }
 
-async function getGift(id) {
+async function getGift(id, actor = null) {
   const gift = await findGiftOr404(id, {
     include: [
       { model: Customer, as: "customer", attributes: ["id", "name", "phone", "email"] },
+      { model: User, as: "createdBy", attributes: ["id", "name"] },
       { model: MediaAsset, as: "media" },
     ],
     order: [[{ model: MediaAsset, as: "media" }, "createdAt", "ASC"]],
   });
+  assertOwnership(gift, actor);
   const opens = await GiftEvent.count({ where: { giftId: gift.id, type: "opened" } });
-  return { ...serializeGift(gift, { includeMedia: true }), stats: { opens } };
+  return { ...serializeGift(gift, { includeMedia: true, actor }), stats: { opens } };
 }
 
 function readBasics(body) {
@@ -144,7 +186,7 @@ function readBasics(body) {
   return basics;
 }
 
-async function createGift(body = {}) {
+async function createGift(body = {}, actor = null) {
   const templateId = typeof body.templateId === "string" ? body.templateId : "";
   const template = TEMPLATE_ID.test(templateId) ? await registry.getTemplate(templateId) : null;
   if (!template) throw new HttpError(400, "Selecciona una plantilla válida.");
@@ -160,6 +202,7 @@ async function createGift(body = {}) {
         templateId,
         templateVersion: template.manifest.version || 1,
         status: "draft",
+        createdById: actor?.id ?? null,
         recipientName: "",
         senderName: "",
         content: {},
@@ -169,11 +212,11 @@ async function createGift(body = {}) {
       { transaction }
     )
   );
-  return getGift(gift.id);
+  return getGift(gift.id, actor);
 }
 
-async function updateGift(id, body = {}) {
-  const gift = await findGiftOr404(id);
+async function updateGift(id, body = {}, actor = null) {
+  const gift = assertOwnership(await findGiftOr404(id), actor);
   const basics = readBasics(body);
   await assertCustomerExists(basics.customerId);
 
@@ -187,23 +230,27 @@ async function updateGift(id, body = {}) {
   }
 
   await gift.update(basics);
-  return getGift(gift.id);
+  return getGift(gift.id, actor);
 }
 
-async function setStatus(id, status) {
+async function setStatus(id, status, actor = null) {
   if (!GIFT_STATUSES.includes(status)) throw new HttpError(400, "Estado inválido.");
-  const gift = await findGiftOr404(id);
+  const gift = assertOwnership(await findGiftOr404(id), actor);
+  // El referido no publica: el regalo se publica solo cuando apruebas su solicitud.
+  if (isReferral(actor) && status === "published" && gift.reviewStatus !== "approved") {
+    throw new HttpError(403, "Envía el regalo a aprobación para poder compartirlo.");
+  }
   if (status === "published") await contentValidation.assertComplete(gift);
   const changes = { status };
   if (status === "published" && !gift.publishedAt) changes.publishedAt = new Date();
   if (status === "archived") changes.archivedAt = new Date();
   if (status !== "archived" && gift.archivedAt) changes.archivedAt = null;
   await gift.update(changes);
-  return getGift(gift.id);
+  return getGift(gift.id, actor);
 }
 
-async function duplicateGift(id) {
-  const source = await findGiftOr404(id, { include: [{ model: MediaAsset, as: "media" }] });
+async function duplicateGift(id, actor = null) {
+  const source = assertOwnership(await findGiftOr404(id, { include: [{ model: MediaAsset, as: "media" }] }), actor);
 
   const copyId = await sequelize.transaction(async (transaction) => {
     const copy = await Gift.create(
@@ -211,6 +258,7 @@ async function duplicateGift(id) {
         id: crypto.randomUUID(),
         slug: await uniqueSlug(transaction),
         customerId: source.customerId,
+        createdById: source.createdById,
         templateId: source.templateId,
         templateVersion: source.templateVersion,
         status: "draft",
@@ -235,41 +283,51 @@ async function duplicateGift(id) {
     return copy.id;
   });
 
-  return getGift(copyId);
+  return getGift(copyId, actor);
 }
 
-async function addMedia(id, { file, uploadedBy = "admin", expectedKind, durationSec }) {
-  const gift = await findGiftOr404(id);
+async function addMedia(id, { file, uploadedBy = "admin", expectedKind, durationSec }, actor = null) {
+  const gift = assertOwnership(await findGiftOr404(id), actor);
   const asset = await media.createFromUpload({ gift, file, uploadedBy, expectedKind, durationSec });
   gift.changed("updatedAt", true);
   await gift.save();
   return media.serializeAsset(asset);
 }
 
-async function removeMedia(giftId, assetId) {
+async function removeMedia(giftId, assetId, actor = null) {
+  const gift = assertOwnership(await findGiftOr404(giftId), actor);
   const asset = await MediaAsset.findOne({ where: { id: assetId, giftId } });
   if (!asset) throw new HttpError(404, "Archivo no encontrado.");
-  const gift = await findGiftOr404(giftId);
+  if (asset.id === gift.paymentProofAssetId) throw new HttpError(400, "Ese archivo es el comprobante de pago.");
   await media.deleteAsset(asset);
   await gift.update({ content: contentValidation.stripAssetRefs(gift.content || {}, assetId) });
 }
 
-async function dashboard() {
+async function dashboard(actor = null) {
+  const scope = isReferral(actor) ? { createdById: actor.id } : {};
   const counts = await Gift.findAll({
     attributes: ["status", [fn("COUNT", col("id")), "count"]],
+    where: scope,
     group: ["status"],
     raw: true,
   });
   const byStatus = Object.fromEntries(counts.map((r) => [r.status, Number(r.count)]));
   const total = Object.entries(byStatus).reduce((sum, [status, n]) => (status === "archived" ? sum : sum + n), 0);
-  const opens = await GiftEvent.count({ where: { type: "opened" } });
+  const opens = await GiftEvent.count({
+    where: { type: "opened" },
+    include: isReferral(actor) ? [{ model: Gift, as: "gift", attributes: [], required: true, where: scope }] : [],
+  });
   const recent = await Gift.findAll({
-    where: { status: { [Op.ne]: "archived" } },
-    include: [{ model: Customer, as: "customer", attributes: ["id", "name", "phone"] }],
+    where: { ...scope, status: { [Op.ne]: "archived" } },
+    include: [
+      { model: Customer, as: "customer", attributes: ["id", "name", "phone"] },
+      { model: User, as: "createdBy", attributes: ["id", "name"] },
+    ],
     order: [["updatedAt", "DESC"]],
     limit: 6,
   });
-  const usage = (await templateUsage()).sort((a, b) => b.count - a.count).slice(0, 5);
+  const pendingReview = await Gift.count({ where: { ...scope, reviewStatus: "pending" } });
+  const usage = (await templateUsage(actor)).sort((a, b) => b.count - a.count).slice(0, 5);
   return {
     stats: {
       total,
@@ -279,16 +337,17 @@ async function dashboard() {
       published: byStatus.published || 0,
       archived: byStatus.archived || 0,
       opens,
+      pendingReview,
     },
-    recentGifts: recent.map((g) => serializeGift(g)),
+    recentGifts: recent.map((g) => serializeGift(g, { actor })),
     topTemplates: usage,
   };
 }
 
-async function templateUsage() {
+async function templateUsage(actor = null) {
   const rows = await Gift.findAll({
     attributes: ["templateId", [fn("COUNT", col("id")), "count"]],
-    where: { status: { [Op.ne]: "archived" } },
+    where: { ...(isReferral(actor) ? { createdById: actor.id } : {}), status: { [Op.ne]: "archived" } },
     group: ["templateId"],
     raw: true,
   });
@@ -296,6 +355,9 @@ async function templateUsage() {
 }
 
 module.exports = {
+  REVIEW_STATUSES,
+  isReferral,
+  assertOwnership,
   listGifts,
   getGift,
   createGift,

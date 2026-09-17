@@ -29,7 +29,7 @@ test("dashboard: conteos por estado, aperturas, recientes y plantillas más usad
 
   const res = await admin("GET", "/api/admin/dashboard");
   assert.equal(res.status, 200);
-  assert.deepEqual(res.body.stats, { total: 2, draft: 1, collectingContent: 1, ready: 0, published: 0, archived: 1, opens: 0 });
+  assert.deepEqual(res.body.stats, { total: 2, draft: 1, collectingContent: 1, ready: 0, published: 0, archived: 1, opens: 0, pendingReview: 0 });
   assert.equal(res.body.recentGifts.length, 2);
   assert.equal(res.body.topTemplates.length, 2);
 });

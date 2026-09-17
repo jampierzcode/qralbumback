@@ -7,6 +7,8 @@ const TemplateListing = sequelize.define("TemplateListing", {
   description: { type: DataTypes.TEXT, allowNull: true },
   isActive: { type: DataTypes.BOOLEAN, allowNull: false, defaultValue: true },
   sortOrder: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0 },
+  // Lo que un referido te paga por cada regalo de esta plantilla.
+  referralPrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
 });
 
 const CollectionTemplate = sequelize.define("CollectionTemplate", {
