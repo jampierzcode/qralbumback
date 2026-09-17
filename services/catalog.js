@@ -232,6 +232,8 @@ const DEFAULT_COLLECTIONS = [
   { slug: "cumpleanos", name: "Cumpleaños", description: "Sorpresas para celebrar un año más." },
   { slug: "aniversario", name: "Aniversario", description: "Para celebrar el tiempo juntos." },
   { slug: "amistad", name: "Amistad", description: "Para esa persona que siempre está." },
+  { slug: "boda", name: "Boda", description: "Invitaciones digitales para el gran día: ceremonia, confirmaciones y recuerdos." },
+  { slug: "save-the-date", name: "Save the date", description: "Para apartar la fecha mucho antes de la invitación." },
 ];
 
 async function seedDefaultCollections() {
