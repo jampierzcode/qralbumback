@@ -40,7 +40,8 @@ after(async () => {
 describe("solicitar contenido (admin)", () => {
   test("crea link firmado, pasa el regalo a 'esperando contenido' y deja un solo link activo", async () => {
     const { gift, request } = await giftWithRequest();
-    assert.match(request.token, /^[A-Za-z0-9_-]{22}\.[A-Za-z0-9_-]{32}$/);
+    // Sin puntos: WhatsApp reconoce el link completo.
+    assert.match(request.token, /^[A-Za-z0-9_-]{22}~[A-Za-z0-9_-]{32}$/);
     assert.equal(request.status, "active");
     // cover tiene customerEditable:false en el fixture
     assert.deepEqual(request.allowedFields.sort(), ["message", "photos", "recipientName", "song"]);
@@ -68,7 +69,7 @@ describe("solicitar contenido (admin)", () => {
 describe("portal del comprador", () => {
   test("tokens manipulados o inventados no funcionan", async () => {
     const { request } = await giftWithRequest();
-    const [id, sig] = request.token.split(".");
+    const [id, sig] = request.token.split("~");
     for (const bad of [`${id}.${sig.slice(0, -1)}x`, `${id}`, "abc.def", `AAAAAAAAAAAAAAAAAAAAAA.${sig}`]) {
       const res = await portal("GET", encodeURIComponent(bad));
       assert.equal(res.status, 404, bad);
