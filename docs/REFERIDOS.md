@@ -22,6 +22,16 @@ el link y el QR. Así nadie vende por su cuenta sin pagarte.
 por cada regalo de esa plantilla. Se copia al regalo al enviarlo a aprobación (`Gifts.price`), así un
 cambio de precios no altera lo ya vendido. En la revisión puedes cambiar el monto de ese regalo.
 
+## Precio de venta y ganancia
+
+`Gifts.salePrice` (opcional) es lo que el vendedor le cobró a **su** cliente. Se pregunta al enviar a
+aprobación y se puede corregir en el editor. Con eso:
+
+- El referido ve en cada regalo *"Te cuesta S/5 · Lo vendiste en S/25 · Ganas S/20"* y el total en **Mi cuenta**.
+- Tú ves en **Referidos** cuánto vendió y ganó cada uno, para saber si el sistema les conviene.
+
+No afecta lo que te deben: eso siempre es `price` (el precio de la plantilla).
+
 ## Permisos
 
 | | Admin | Referido |

@@ -83,6 +83,7 @@ function serializeGift(gift, { includeMedia = false, actor = null } = {}) {
     reviewedAt: gift.reviewedAt,
     reviewNote: gift.reviewNote,
     price: gift.price === null || gift.price === undefined ? null : Number(gift.price),
+    salePrice: gift.salePrice === null || gift.salePrice === undefined ? null : Number(gift.salePrice),
     currency: gift.currency,
     paidAt: gift.paidAt,
     hasPaymentProof: Boolean(gift.paymentProofAssetId),
@@ -183,6 +184,14 @@ function readBasics(body) {
   if (body.customerId !== undefined) basics.customerId = optionalInt(body.customerId, { field: "customerId" });
   if (body.content !== undefined) basics.content = plainObject(body.content, { field: "content" });
   if (body.settings !== undefined) basics.settings = plainObject(body.settings, { field: "settings", maxBytes: 20_000 });
+  if (body.salePrice !== undefined) {
+    if (body.salePrice === null || body.salePrice === "") basics.salePrice = null;
+    else {
+      const sale = Number(body.salePrice);
+      if (!Number.isFinite(sale) || sale < 0 || sale > 99999) throw new HttpError(400, "Precio de venta inválido.");
+      basics.salePrice = sale;
+    }
+  }
   return basics;
 }
 

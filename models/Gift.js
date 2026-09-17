@@ -23,6 +23,8 @@ const Gift = sequelize.define("Gift", {
   reviewedById: { type: DataTypes.INTEGER, allowNull: true },
   reviewNote: { type: DataTypes.STRING(300), allowNull: true },
   price: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
+  // Lo que el vendedor le cobró a su cliente (opcional).
+  salePrice: { type: DataTypes.DECIMAL(10, 2), allowNull: true },
   currency: { type: DataTypes.STRING(3), allowNull: false, defaultValue: "PEN" },
   paidAt: { type: DataTypes.DATE, allowNull: true },
   paymentProofAssetId: { type: DataTypes.UUID, allowNull: true },

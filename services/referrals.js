@@ -29,6 +29,8 @@ function serializeReferral(user, totals = {}) {
     approved: totals.approved || 0,
     owed: totals.owed || 0,
     paid: totals.paid || 0,
+    sold: totals.sold || 0,
+    earned: totals.earned || 0,
   };
 }
 
@@ -41,6 +43,9 @@ async function totalsByReferral(where = {}) {
       [fn("SUM", literal("reviewStatus = 'approved'")), "approved"],
       [fn("SUM", literal("CASE WHEN reviewStatus = 'approved' AND paidAt IS NULL THEN price ELSE 0 END")), "owed"],
       [fn("SUM", literal("CASE WHEN paidAt IS NOT NULL THEN price ELSE 0 END")), "paid"],
+      // Ventas del referido: lo que le cobró a sus clientes y lo que le quedó.
+      [fn("SUM", literal("CASE WHEN reviewStatus = 'approved' THEN salePrice ELSE 0 END")), "sold"],
+      [fn("SUM", literal("CASE WHEN reviewStatus = 'approved' AND salePrice IS NOT NULL THEN salePrice - COALESCE(price, 0) ELSE 0 END")), "earned"],
     ],
     where,
     group: ["createdById"],
@@ -54,6 +59,8 @@ async function totalsByReferral(where = {}) {
       approved: Number(r.approved || 0),
       owed: Number(r.owed || 0),
       paid: Number(r.paid || 0),
+      sold: Number(r.sold || 0),
+      earned: Number(r.earned || 0),
     });
   }
   return map;
@@ -116,7 +123,13 @@ async function submitForReview(giftId, body = {}, actor = null) {
   // Se revisa completo: al aprobarlo se publica de inmediato.
   await contentValidation.assertComplete(gift);
 
+  const salePrice = body.salePrice === undefined || body.salePrice === "" ? gift.salePrice : money(body.salePrice);
+  if (salePrice !== null && salePrice !== undefined && (!Number.isFinite(salePrice) || salePrice < 0)) {
+    throw new HttpError(400, "Precio de venta inválido.");
+  }
+
   await gift.update({
+    salePrice,
     reviewStatus: "pending",
     submittedAt: new Date(),
     reviewNote: optionalString(body.note, { field: "note", max: 300 }) || null,
@@ -206,6 +219,8 @@ async function account(referralId) {
       approved: totals.approved || 0,
       owed: totals.owed || 0,
       paid: totals.paid || 0,
+      sold: totals.sold || 0,
+      earned: totals.earned || 0,
       currency: "PEN",
     },
     unpaidGifts: unpaid.map((g) => gifts.serializeGift(g)),

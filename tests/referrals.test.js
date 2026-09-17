@@ -177,13 +177,36 @@ describe("regalos de un referido", () => {
   });
 });
 
+describe("ganancias del referido", () => {
+  test("el precio de venta calcula su ganancia y la suma del referido", async () => {
+    const venta = await newGift(referral, { recipientName: "Marta" });
+    await complete(referral, venta.id);
+    const sent = await referral("POST", `/api/admin/gifts/${venta.id}/submit`, { body: { salePrice: 25 } });
+    assert.equal(sent.body.salePrice, 25);
+    assert.equal(sent.body.price, 10);
+
+    await admin("POST", `/api/admin/gifts/${venta.id}/review`, { body: { action: "approve", paid: true } });
+    const cuenta = await referral("GET", "/api/admin/account");
+    assert.equal(cuenta.body.summary.sold, 25);
+    assert.equal(cuenta.body.summary.earned, 15);
+
+    // También se puede corregir después desde el editor.
+    const fix = await referral("PATCH", `/api/admin/gifts/${venta.id}`, { body: { salePrice: 30 } });
+    assert.equal(fix.body.salePrice, 30);
+    assert.equal((await referral("GET", "/api/admin/account")).body.summary.earned, 20);
+
+    const malo = await referral("PATCH", `/api/admin/gifts/${venta.id}`, { body: { salePrice: -5 } });
+    assert.equal(malo.status, 400);
+  });
+});
+
 describe("cuenta por pagar", () => {
   test("suma lo aprobado y descuenta lo que marcas como pagado", async () => {
     const cuenta = await referral("GET", "/api/admin/account");
     assert.equal(cuenta.status, 200);
     // Un regalo aprobado sin pagar y otro aprobado con el pago ya registrado.
     assert.equal(cuenta.body.summary.owed, 10);
-    assert.equal(cuenta.body.summary.paid, 10);
+    assert.equal(cuenta.body.summary.paid, 20);
     assert.equal(cuenta.body.unpaidGifts.length, 1);
 
     const giftId = cuenta.body.unpaidGifts[0].id;
@@ -191,12 +214,14 @@ describe("cuenta por pagar", () => {
 
     const despues = await referral("GET", "/api/admin/account");
     assert.equal(despues.body.summary.owed, 0);
-    assert.equal(despues.body.summary.paid, 20);
+    assert.equal(despues.body.summary.paid, 30);
 
     const lista = await admin("GET", "/api/admin/referrals");
     const yo = lista.body.items.find((r) => r.id === refId);
-    assert.equal(yo.approved, 2);
-    assert.equal(yo.paid, 20);
+    assert.equal(yo.approved, 3);
+    assert.equal(yo.paid, 30);
     assert.equal(yo.owed, 0);
+    assert.equal(yo.sold, 30);
+    assert.equal(yo.earned, 20);
   });
 });
