@@ -8,6 +8,7 @@ const { optionalString, optionalInt, plainObject } = require("../utils/input");
 const media = require("./media");
 const registry = require("./templateRegistry");
 const contentValidation = require("./contentValidation");
+const sellers = require("./sellers");
 
 const TEMPLATE_ID = /^[a-z0-9][a-z0-9-]{1,62}$/;
 const REVIEW_STATUSES = ["none", "pending", "approved", "rejected"];
@@ -202,6 +203,8 @@ async function createGift(body = {}, actor = null) {
 
   const basics = readBasics(body);
   await assertCustomerExists(basics.customerId);
+  // Precio de venta del vendedor para esta plantilla (puede cambiarlo después).
+  if (basics.salePrice === undefined) basics.salePrice = await sellers.salePriceFor(actor?.id, templateId);
 
   const gift = await sequelize.transaction(async (transaction) =>
     Gift.create(

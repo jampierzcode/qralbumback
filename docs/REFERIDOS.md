@@ -32,6 +32,18 @@ aprobación y se puede corregir en el editor. Con eso:
 
 No afecta lo que te deben: eso siempre es `price` (el precio de la plantilla).
 
+## Mi negocio (cada vendedor)
+
+`/admin/business` — lo ven el dueño y cada referido:
+
+- **Mis precios** (`SellerTemplatePrices`): a cuánto vende él cada plantilla. Al crear un regalo, ese
+  precio se copia a `Gifts.salePrice`, así su ganancia sale sola.
+- **Cómo te pagan** (`PaymentMethods`): Yape, Plin, BIM o transferencia. Son los datos que verá su
+  cliente final al pagar. Cada vendedor sólo ve y edita los suyos.
+
+En **Mi cuenta**, si el referido debe algo, se le muestran los datos de pago **del dueño**
+(`GET /admin/owner-payment-methods`) para que sepa a dónde yapear.
+
 ## Permisos
 
 | | Admin | Referido |

@@ -8,6 +8,7 @@ const catalog = require("../services/catalog");
 const contentRequests = require("../services/contentRequests");
 const responses = require("../services/responses");
 const referrals = require("../services/referrals");
+const sellers = require("../services/sellers");
 
 // Los referidos entran al mismo panel, pero sólo ven lo suyo (el scope va en cada servicio).
 router.use(auth, requireRole("superadmin", "admin", "referido"));
@@ -62,6 +63,22 @@ router.patch("/referrals/:id", adminOnly, async (req, res) => res.json(await ref
 router.get("/referrals/:id/account", adminOnly, async (req, res) => res.json(await referrals.account(Number(req.params.id))));
 // Cuenta del referido que entró (cuánto te debe y qué ya pagó).
 router.get("/account", async (req, res) => res.json(await referrals.account(req.user.id)));
+
+// ── Mi negocio: cómo me pagan y a cuánto vendo ─────────────────────────────
+router.get("/payment-methods", async (req, res) => res.json({ items: await sellers.listMethods(req.user.id) }));
+router.post("/payment-methods", async (req, res) => res.status(201).json(await sellers.createMethod(req.user.id, req.body)));
+router.patch("/payment-methods/:id", async (req, res) => res.json(await sellers.updateMethod(req.user.id, req.params.id, req.body)));
+router.delete("/payment-methods/:id", async (req, res) => {
+  await sellers.deleteMethod(req.user.id, req.params.id);
+  res.status(204).end();
+});
+// Datos con los que el referido le paga al dueño.
+router.get("/owner-payment-methods", async (req, res) => res.json(await sellers.ownerMethods()));
+
+router.get("/my-catalog", async (req, res) => res.json({ items: await sellers.catalogFor(req.user.id) }));
+router.put("/my-catalog/:templateId", async (req, res) =>
+  res.json({ items: await sellers.setSalePrice(req.user.id, req.params.templateId, req.body?.salePrice) })
+);
 
 router.post("/gifts/:id/media", uploadOne, async (req, res) => {
   try {

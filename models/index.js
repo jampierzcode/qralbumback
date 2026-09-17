@@ -9,6 +9,8 @@ const GiftEvent = require("./GiftEvent");
 const Collection = require("./Collection");
 const GiftResponse = require("./GiftResponse");
 const { TemplateListing, CollectionTemplate } = require("./TemplateListing");
+const PaymentMethod = require("./PaymentMethod");
+const SellerTemplatePrice = require("./SellerTemplatePrice");
 
 // Legado (sólo lectura tras la migración al nuevo modelo)
 User.hasMany(Multimedia, { foreignKey: "userId" });
@@ -21,6 +23,10 @@ Gift.belongsTo(Customer, { foreignKey: "customerId", as: "customer" });
 User.hasMany(Gift, { foreignKey: "createdById", as: "createdGifts" });
 Gift.belongsTo(User, { foreignKey: "createdById", as: "createdBy" });
 Gift.belongsTo(User, { foreignKey: "reviewedById", as: "reviewedBy" });
+User.hasMany(PaymentMethod, { foreignKey: "userId", as: "paymentMethods" });
+PaymentMethod.belongsTo(User, { foreignKey: "userId", as: "user" });
+User.hasMany(SellerTemplatePrice, { foreignKey: "userId", as: "templatePrices" });
+
 User.hasMany(Customer, { foreignKey: "createdById", as: "createdCustomers" });
 Customer.belongsTo(User, { foreignKey: "createdById", as: "createdBy" });
 
@@ -57,6 +63,8 @@ module.exports = {
   GiftResponse,
   Collection,
   TemplateListing,
+  PaymentMethod,
+  SellerTemplatePrice,
   CollectionTemplate,
   sequelize,
   User,
