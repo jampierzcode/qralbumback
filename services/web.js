@@ -22,16 +22,23 @@ function escapeHtml(value) {
     .replace(/'/g, "&#39;");
 }
 
+const BRAND = "MiAlbumQr";
+const TAGLINE = "Regalos digitales para personas especiales";
+
 function publicOrigin(req) {
   return (process.env.PUBLIC_URL || `${req.protocol}://${req.get("host")}`).replace(/\/$/, "");
 }
 
-function renderHead(template, { title, description, image, url, noindex }) {
+/**
+ * `title` va en la pestaña (lleva la marca) y `ogTitle` en la vista previa que
+ * se ve al compartir el link (ahí manda el mensaje, no la marca).
+ */
+function renderHead(template, { title, ogTitle, description, image, url, noindex }) {
   const tags = [
     `<title>${escapeHtml(title)}</title>`,
     `<meta name="description" content="${escapeHtml(description)}" />`,
     `<meta property="og:type" content="website" />`,
-    `<meta property="og:title" content="${escapeHtml(title)}" />`,
+    `<meta property="og:title" content="${escapeHtml(ogTitle || title)}" />`,
     `<meta property="og:description" content="${escapeHtml(description)}" />`,
     url && `<meta property="og:url" content="${escapeHtml(url)}" />`,
     image && `<meta property="og:image" content="${escapeHtml(image)}" />`,
@@ -64,8 +71,10 @@ async function giftMeta(slug, req) {
   }
 
   const name = gift.recipientName?.trim();
+  const headline = name ? `Un regalo para ${name} 💛` : `Tienes un regalo 💛`;
   return {
-    title: name ? `Un regalo para ${name} 💛` : `Tienes un regalo 💛`,
+    title: `${headline} · ${BRAND}`,
+    ogTitle: headline,
     description: gift.senderName ? `${gift.senderName} preparó algo especial para ti. Ábrelo con el sonido encendido.` : `Alguien preparó algo especial para ti: ${templateName}.`,
     image,
     url: `${publicOrigin(req)}/g/${gift.slug}`,
@@ -84,8 +93,8 @@ function mountWeb(app) {
 
   const template = () => fs.readFileSync(indexFile, "utf8");
   const baseMeta = {
-    title: "Regalos digitales",
-    description: "Experiencias digitales personalizadas para regalar.",
+    title: `${BRAND} · ${TAGLINE}`,
+    description: `${BRAND} · ${TAGLINE}`,
   };
 
   app.use("/assets", express.static(path.join(dir, "assets"), { immutable: true, maxAge: "365d", index: false, fallthrough: false }));
@@ -95,7 +104,7 @@ function mountWeb(app) {
     try {
       const meta = await giftMeta(String(req.params.slug), req);
       res.status(meta ? 200 : 404).set("Cache-Control", "no-store").type("html");
-      res.send(renderHead(template(), meta || { ...baseMeta, title: "Regalo no disponible", noindex: true }));
+      res.send(renderHead(template(), meta || { ...baseMeta, title: `Regalo no disponible · ${BRAND}`, noindex: true }));
     } catch (err) {
       next(err);
     }
