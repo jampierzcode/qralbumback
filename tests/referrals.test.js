@@ -155,6 +155,17 @@ describe("regalos de un referido", () => {
     assert.equal(publico.status, 200);
   });
 
+  test("aprobar con el pago ya registrado no deja deuda", async () => {
+    const pagado = await newGift(referral, { recipientName: "Cielo" });
+    await complete(referral, pagado.id);
+    await referral("POST", `/api/admin/gifts/${pagado.id}/submit`);
+    const ok = await admin("POST", `/api/admin/gifts/${pagado.id}/review`, { body: { action: "approve", paid: true } });
+    assert.equal(ok.body.reviewStatus, "approved");
+    assert.ok(ok.body.paidAt);
+    const cuenta = await referral("GET", "/api/admin/account");
+    assert.ok(!cuenta.body.unpaidGifts.some((g) => g.id === pagado.id));
+  });
+
   test("rechazar deja el motivo y quita el link", async () => {
     const otro = await newGift(referral, { recipientName: "Luis" });
     await complete(referral, otro.id);
@@ -170,8 +181,9 @@ describe("cuenta por pagar", () => {
   test("suma lo aprobado y descuenta lo que marcas como pagado", async () => {
     const cuenta = await referral("GET", "/api/admin/account");
     assert.equal(cuenta.status, 200);
+    // Un regalo aprobado sin pagar y otro aprobado con el pago ya registrado.
     assert.equal(cuenta.body.summary.owed, 10);
-    assert.equal(cuenta.body.summary.paid, 0);
+    assert.equal(cuenta.body.summary.paid, 10);
     assert.equal(cuenta.body.unpaidGifts.length, 1);
 
     const giftId = cuenta.body.unpaidGifts[0].id;
@@ -179,12 +191,12 @@ describe("cuenta por pagar", () => {
 
     const despues = await referral("GET", "/api/admin/account");
     assert.equal(despues.body.summary.owed, 0);
-    assert.equal(despues.body.summary.paid, 10);
+    assert.equal(despues.body.summary.paid, 20);
 
     const lista = await admin("GET", "/api/admin/referrals");
     const yo = lista.body.items.find((r) => r.id === refId);
-    assert.equal(yo.approved, 1);
-    assert.equal(yo.paid, 10);
+    assert.equal(yo.approved, 2);
+    assert.equal(yo.paid, 20);
     assert.equal(yo.owed, 0);
   });
 });

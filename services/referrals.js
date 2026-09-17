@@ -147,7 +147,10 @@ async function getPaymentProof(giftId, actor = null) {
   return media.serializeAsset(asset);
 }
 
-/** Apruebas o rechazas. Al aprobar, el regalo se publica y el referido ya ve link y QR. */
+/**
+ * Apruebas o rechazas. Al aprobar, el regalo se publica y el referido ya ve link y QR.
+ * Con `paid: true` se registra el pago en el mismo paso (no hay que marcarlo después).
+ */
 async function review(giftId, body = {}, actor = null) {
   const action = body.action;
   if (!["approve", "reject"].includes(action)) throw new HttpError(400, "Acción inválida.");
@@ -170,6 +173,7 @@ async function review(giftId, body = {}, actor = null) {
     reviewedById: actor?.id ?? null,
     reviewNote: note,
     price,
+    paidAt: body.paid === true ? gift.paidAt || new Date() : body.paid === false ? null : gift.paidAt,
     status: "published",
     publishedAt: gift.publishedAt || new Date(),
     archivedAt: null,
